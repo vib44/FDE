@@ -113,8 +113,8 @@ export default function Dashboard() {
     <main className="dashboard">
       <header className="dashboard-header">
         <div>
-          <p className="eyebrow">DEALERPULSE · EXECUTIVE OVERVIEW</p>
-          <h1>Know where to focus today.</h1>
+          <p className="eyebrow" style={{ fontSize: "1.25rem" }}>DEALERPULSE · PERFORMANCE OVERVIEW</p>
+          
        {/*   <p className="as-of">Data as of {new Intl.DateTimeFormat("en-IN", {
             day: "2-digit", month: "short", year: "numeric", timeZone: "UTC",
           }).format(new Date(`${toDay(dataset.asOf)}T00:00:00.000Z`))}
@@ -129,7 +129,6 @@ export default function Dashboard() {
       
         <div className="kpi-heading">
           <div>
-            <p className="eyebrow">PERFORMANCE SNAPSHOT</p>
             <p className="scope-caption">All active filters applied to each metric’s event definition.</p>
           </div>
           <span className="comparison-caption">
