@@ -1,0 +1,214 @@
+
+
+.scope-caption,
+.comparison-caption {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 5px 0 0;
+}
+
+.comparison-caption {
+  text-align: right;
+}
+
+.kpi-strip {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.kpi-card {
+  min-width: 0;
+  padding: 15px 13px 12px;
+}
+
+.kpi-card .card-label {
+  font-size: 10px;
+  letter-spacing: 0.055em;
+  line-height: 1.4;
+}
+
+.kpi-status {
+  align-items: center;
+  color: var(--text-muted);
+  display: inline-flex;
+  flex: 0 0 auto;
+  height: 14px;
+  justify-content: center;
+  width: 14px;
+}
+
+.kpi-card.status-good .kpi-status {
+  color: var(--good);
+}
+
+.kpi-card.status-watch .kpi-status {
+  color: var(--warn);
+}
+
+.kpi-card.status-risk .kpi-status {
+  color: var(--bad);
+}
+
+.kpi-card .status-shape {
+  height: 8px;
+  width: 8px;
+}
+
+.kpi-value {
+  display: block;
+  font-size: clamp(17px, 1.45vw, 23px);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.035em;
+  margin: 14px 0 10px;
+  overflow-wrap: anywhere;
+}
+
+.kpi-bottomline {
+  gap: 4px;
+  min-height: 27px;
+}
+
+.kpi-delta {
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.status-good .kpi-delta {
+  color: var(--good);
+}
+
+.status-watch .kpi-delta,
+.status-risk .kpi-delta {
+  color: var(--warn);
+}
+
+.kpi-note {
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.4;
+  margin: 10px 0 0;
+  padding-top: 8px;
+}
+
+.charts-section {
+  margin-top: 30px;
+}
+
+.chart-instruction {
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 600;
+  margin: 18px 0 -18px;
+}
+
+.charts-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  min-width: 0;
+}
+
+.chart-panel {
+  min-width: 0;
+  overflow: hidden;
+  padding: 17px 18px 12px;
+}
+
+.chart-period {
+  color: var(--text-muted);
+  display: block;
+  font-size: 11px;
+  line-height: 1.4;
+  margin-top: 6px;
+}
+
+.leads-filter-bar {
+  align-items: end;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 18px 0;
+  padding: 14px;
+}
+
+.leads-filter-bar label {
+  display: grid;
+  flex: 1 1 150px;
+  gap: 5px;
+  min-width: 0;
+}
+
+.leads-filter-bar label span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.leads-filter-bar select {
+  min-width: 0;
+  width: 100%;
+}
+
+.scorecard-health-legend {
+  color: var(--text-muted);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 11px;
+  gap: 6px 14px;
+  margin-top: 10px;
+}
+
+.scorecard-health-legend label {
+  font-weight: 700;
+}
+
+.scorecard-health-legend output {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.scorecard-health-legend input {
+  accent-color: var(--accent);
+  height: 18px;
+  min-height: 0;
+  width: 120px;
+}
+
+.scorecard-health-key {
+  align-items: center;
+  display: inline-flex;
+  gap: 5px;
+}
+
+.scorecard-health-legend small {
+  color: var(--text-muted);
+  flex-basis: 100%;
+}
+
+.health-dot {
+  border-radius: 999px;
+  display: inline-block;
+  height: 10px;
+  width: 10px;
+}
+
+.health-dot.is-healthy {
+  background: var(--surface-raised);
+}
+
+.health-dot.is-unhealthy {
+  background: color-mix(in srgb, var(--bad) 14%, var(--surface));
+}
+
+.ai-alert-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 382px;
+}

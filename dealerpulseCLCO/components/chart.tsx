@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import * as echarts from "echarts/core";
 import type { EChartsCoreOption, EChartsType, ECElementEvent } from "echarts/core";
-import { BarChart, FunnelChart, HeatmapChart, LineChart, PieChart, ScatterChart } from "echarts/charts";
+import { BarChart, FunnelChart, LineChart } from "echarts/charts";
 import {
   AriaComponent,
   GridComponent,
@@ -12,14 +12,16 @@ import {
   VisualMapComponent,
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
+import { CHART_THEME_NAME, registerChartTheme } from "../lib/chartTheme.ts";
+import { useChartTokens } from "./use-chart-tokens.ts";
+
+const reducedMotion = typeof window !== "undefined" &&
+  window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 echarts.use([
   BarChart,
   FunnelChart,
-  HeatmapChart,
   LineChart,
-  PieChart,
-  ScatterChart,
   AriaComponent,
   GridComponent,
   LegendComponent,
@@ -37,6 +39,35 @@ interface ChartProps {
   onClick?: (event: ECElementEvent) => void;
 }
 
+function chartOptionWithTheme(option: EChartsCoreOption): EChartsCoreOption {
+  const tooltipOptions = Array.isArray(option.tooltip)
+    ? option.tooltip.map((tooltip) => ({
+      ...tooltip,
+      appendTo: "body",
+      appendToBody: true,
+      confine: false,
+      z: 2147483647,
+      extraCssText: "z-index: 2147483647 !important; border-radius: 8px;",
+    }))
+    : option.tooltip
+      ? {
+        ...option.tooltip,
+        appendTo: "body",
+        appendToBody: true,
+        confine: false,
+        z: 2147483647,
+        extraCssText: "z-index: 2147483647 !important; border-radius: 8px;",
+      }
+      : undefined;
+
+  return {
+    ...option,
+    backgroundColor: "transparent",
+    animation: !reducedMotion,
+    ...(tooltipOptions ? { tooltip: tooltipOptions } : {}),
+  };
+}
+
 export function Chart({
   option,
   ariaLabel,
@@ -48,6 +79,7 @@ export function Chart({
   const host = useRef<HTMLDivElement>(null);
   const chart = useRef<EChartsType | null>(null);
   const clickHandler = useRef(onClick);
+  const tokens = useChartTokens();
 
   useEffect(() => {
     clickHandler.current = onClick;
@@ -55,32 +87,13 @@ export function Chart({
 
   useEffect(() => {
     const hostElement = host.current;
-    if (!hostElement) return;
+    if (!hostElement || !tokens) return;
 
-    const instance = echarts.init(hostElement);
+    registerChartTheme(tokens);
+    const instance = echarts.init(hostElement, CHART_THEME_NAME);
     chart.current = instance;
-    const setChartOption = (nextOption: EChartsCoreOption) => {
-      const tooltipOptions = Array.isArray(nextOption.tooltip)
-        ? nextOption.tooltip.map((tooltip) => ({
-          ...tooltip,
-          appendTo: "body",
-          appendToBody: true,
-          confine: false,
-          z: 2147483647,
-          extraCssText: "z-index: 2147483647 !important;",
-        }))
-        : nextOption.tooltip
-          ? {
-            ...nextOption.tooltip,
-            appendTo: "body",
-            appendToBody: true,
-            confine: false,
-            z: 2147483647,
-            extraCssText: "z-index: 2147483647 !important;",
-          }
-          : undefined;
-      instance.setOption({ ...nextOption, ...(tooltipOptions ? { tooltip: tooltipOptions } : {}) }, true);
-    };
+    const setChartOption = (nextOption: EChartsCoreOption) =>
+      instance.setOption(chartOptionWithTheme(nextOption), true);
     const observer = new ResizeObserver(() => instance.resize());
     observer.observe(hostElement);
     const handleClick = (event: ECElementEvent) => clickHandler.current?.(event);
@@ -93,34 +106,15 @@ export function Chart({
       instance.dispose();
       if (chart.current === instance) chart.current = null;
     };
-  }, []);
+  }, [tokens]);
 
   useEffect(() => {
     const instance = chart.current;
-    if (!instance) return;
-    const tooltipOptions = Array.isArray(option.tooltip)
-      ? option.tooltip.map((tooltip) => ({
-        ...tooltip,
-        appendTo: "body",
-        appendToBody: true,
-        confine: false,
-        z: 2147483647,
-        extraCssText: "z-index: 2147483647 !important;",
-      }))
-      : option.tooltip
-        ? {
-          ...option.tooltip,
-          appendTo: "body",
-          appendToBody: true,
-          confine: false,
-          z: 2147483647,
-          extraCssText: "z-index: 2147483647 !important;",
-        }
-        : undefined;
-    instance.setOption({ ...option, ...(tooltipOptions ? { tooltip: tooltipOptions } : {}) }, true);
-  }, [option]);
+    if (!instance || !tokens) return;
+    instance.setOption(chartOptionWithTheme(option), true);
+  }, [option, tokens]);
 
-  if (loading) {
+  if (loading || !tokens) {
     return <div className="chart-skeleton" aria-hidden="true" />;
   }
   if (empty) {

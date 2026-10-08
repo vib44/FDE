@@ -1,6 +1,8 @@
+import { PageContainer } from "./shared-ui.tsx";
+
 export function DashboardSkeleton() {
   return (
-    <main className="dashboard page-skeleton" aria-busy="true" aria-label="Loading dashboard">
+    <PageContainer className="page-skeleton" aria-busy="true" aria-label="Loading dashboard">
       <header className="skeleton-header">
         <div>
           <span className="skeleton-block skeleton-eyebrow" />
@@ -11,7 +13,7 @@ export function DashboardSkeleton() {
       <section className="overview">
         <div className="skeleton-block skeleton-section-heading" />
         <div className="skeleton-kpis">
-          {Array.from({ length: 7 }, (_, index) => (
+          {Array.from({ length: 5 }, (_, index) => (
             <div className="skeleton-card skeleton-kpi" key={index}>
               <span className="skeleton-block skeleton-line short" />
               <span className="skeleton-block skeleton-number" />
@@ -20,9 +22,8 @@ export function DashboardSkeleton() {
           ))}
         </div>
       </section>
-      <div className="skeleton-card skeleton-filter" />
       <div className="skeleton-charts">
-        {Array.from({ length: 6 }, (_, index) => (
+        {Array.from({ length: 2 }, (_, index) => (
           <div className="skeleton-card skeleton-chart" key={index}>
             <span className="skeleton-block skeleton-line short" />
             <span className="skeleton-block skeleton-chart-body" />
@@ -30,13 +31,13 @@ export function DashboardSkeleton() {
         ))}
       </div>
       <span className="sr-only">Loading performance overview and charts.</span>
-    </main>
+    </PageContainer>
   );
 }
 
 export function LeadsSkeleton() {
   return (
-    <main className="dashboard leads-page page-skeleton" aria-busy="true" aria-label="Loading leads">
+    <PageContainer className="leads-page page-skeleton" aria-busy="true" aria-label="Loading leads">
       <header className="skeleton-header">
         <div>
           <span className="skeleton-block skeleton-eyebrow" />
@@ -49,6 +50,6 @@ export function LeadsSkeleton() {
       <div className="skeleton-card skeleton-lead-row" />
       <div className="skeleton-card skeleton-lead-row" />
       <span className="sr-only">Loading matching lead records.</span>
-    </main>
+    </PageContainer>
   );
 }

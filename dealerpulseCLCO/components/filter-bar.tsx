@@ -7,7 +7,7 @@ import { useDataset } from "./dataset-provider.tsx";
 const DAY_MS = 86_400_000;
 
 export function FilterBar() {
-  const { dataset, isLive, setIsLive, newLeads, dismissNewLeads } = useDataset();
+  const { dataset } = useDataset();
   const params = useSearchParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -28,9 +28,13 @@ export function FilterBar() {
 
   function setRange(value: string) {
     const next = new URLSearchParams(params.toString());
-    next.delete("from");
-    next.delete("to");
-    next.delete("range");
+    if (value === "custom") {
+      next.set("range", "custom");
+    } else {
+      next.delete("from");
+      next.delete("to");
+      next.delete("range");
+    }
     if (value === "30d" || value === "90d") {
       const days = Number(value.slice(0, -1));
       next.set("from", toDay(dataset.asOf - (days - 1) * DAY_MS));
@@ -100,20 +104,6 @@ export function FilterBar() {
           <option value="custom">Custom range</option>
         </select>
       </label>
-      {range === "custom" && (
-        <>
-          <label>
-            <span>From</span>
-            <input type="date" aria-label="From date" value={params.get("from") ?? ""}
-              onChange={(event) => setCustomDate("from", event.target.value)} />
-          </label>
-          <label>
-            <span>To</span>
-            <input type="date" aria-label="To date" value={params.get("to") ?? ""}
-              onChange={(event) => setCustomDate("to", event.target.value)} />
-          </label>
-        </>
-      )}
       <label>
         <span>Branch</span>
         <select aria-label="Branch" value={branch} onChange={(event) => updateParam("branch", event.target.value)}>
@@ -121,37 +111,47 @@ export function FilterBar() {
           {dataset.branches.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
         </select>
       </label>
-      <label>
-        <span>Source</span>
-        <select aria-label="Source" value={source} onChange={(event) => updateParam("source", event.target.value)}>
-          <option value="">All sources</option>
-          {dataset.sources.map((item) => <option key={item} value={item}>{item.replaceAll("_", " ")}</option>)}
-        </select>
-      </label>
-      <label>
-        <span>Model</span>
-        <select aria-label="Model" value={model} onChange={(event) => updateParam("model", event.target.value)}>
-          <option value="">All models</option>
-          {dataset.models.map((item) => <option key={item} value={item}>{item}</option>)}
-        </select>
-      </label>
-      <label>
-        <span>Time basis</span>
-        <select aria-label="Time basis" value={basis} onChange={(event) => updateParam("basis", event.target.value)}>
-          <option value="created">By lead created date</option>
-          <option value="event">By event date</option>
-        </select>
-      </label>
+      <details className="filter-more">
+        <summary>More filters</summary>
+        <div className="filter-more-popover">
+          {range === "custom" && (
+            <>
+              <label>
+                <span>From</span>
+                <input type="date" aria-label="From date" value={params.get("from") ?? ""}
+                  onChange={(event) => setCustomDate("from", event.target.value)} />
+              </label>
+              <label>
+                <span>To</span>
+                <input type="date" aria-label="To date" value={params.get("to") ?? ""}
+                  onChange={(event) => setCustomDate("to", event.target.value)} />
+              </label>
+            </>
+          )}
+          <label>
+            <span>Source</span>
+            <select aria-label="Source" value={source} onChange={(event) => updateParam("source", event.target.value)}>
+              <option value="">All sources</option>
+              {dataset.sources.map((item) => <option key={item} value={item}>{item.replaceAll("_", " ")}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Model</span>
+            <select aria-label="Model" value={model} onChange={(event) => updateParam("model", event.target.value)}>
+              <option value="">All models</option>
+              {dataset.models.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Time basis</span>
+            <select aria-label="Time basis" value={basis} onChange={(event) => updateParam("basis", event.target.value)}>
+              <option value="created">By lead created date</option>
+              <option value="event">By event date</option>
+            </select>
+          </label>
+        </div>
+      </details>
       <button className="reset-button" type="button" onClick={resetFilters}>Reset</button>
-      <label className="live-toggle">
-        <input type="checkbox" checked={isLive} onChange={(event) => setIsLive(event.target.checked)} />
-        <span>Live · 15 sec</span>
-      </label>
-      {newLeads > 0 && (
-        <button className="new-leads" type="button" onClick={dismissNewLeads} aria-live="polite">
-          +{newLeads} new {newLeads === 1 ? "lead" : "leads"} ×
-        </button>
-      )}
       {chips.length > 0 && (
         <div className="filter-chips" aria-label="Active filters">
           {chips.map((chip) => (

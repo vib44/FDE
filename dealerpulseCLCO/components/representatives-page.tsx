@@ -1,18 +1,17 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import type { EChartsCoreOption, ECElementEvent } from "echarts/core";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { EMPTY_FILTERS } from "../lib/types.ts";
 import type { FilterState } from "../lib/types.ts";
+import { formatNumber } from "../lib/format.ts";
 import { periodLabel } from "../lib/period.ts";
 import { LAST_CONTACT_BUCKETS, lastContactByRepresentative } from "../lib/metrics/last-contact.ts";
-import type { LastContactBucketKey } from "../lib/metrics/last-contact.ts";
-import { Chart } from "./chart.tsx";
+import { actNowInsights } from "../lib/metrics/insights.ts";
 import { useDataset } from "./dataset-provider.tsx";
-
-const bucketColors = ["#4f91b2", "#55a885", "#e1aa47", "#d78252", "#bc625a"] as const;
+import { InsightStrip } from "./insight-strip.tsx";
+import { PageContainer, PageHeader, PremiumTable } from "./shared-ui.tsx";
 
 function dayStart(value: string | null): number | null {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
@@ -20,229 +19,129 @@ function dayStart(value: string | null): number | null {
   return Number.isFinite(timestamp) ? timestamp : null;
 }
 
-function updateQuery(
-  router: ReturnType<typeof useRouter>,
-  params: URLSearchParams,
-  key: string,
-  value: string,
-) {
-  const next = new URLSearchParams(params.toString());
-  if (value) next.set(key, value);
-  else next.delete(key);
-  router.replace(`/representatives?${next.toString()}`, { scroll: false });
+function withStatus(params: URLSearchParams, value: string): string {
+  if (value === "all") params.delete("status");
+  else params.set("status", value);
+  return params.toString();
 }
 
 export function RepresentativesPage() {
   const { dataset } = useDataset();
+  const pathname = usePathname();
   const params = useSearchParams();
   const router = useRouter();
   const statuses = useMemo(() => [...new Set(dataset.leads.map((lead) => lead.status))].sort(), [dataset.leads]);
   const requestedStatus = params.get("status");
   const status = requestedStatus && statuses.includes(requestedStatus) ? requestedStatus : "all";
-  const requestedBucket = params.get("bucket");
-  const selectedBucket = LAST_CONTACT_BUCKETS.some((bucket) => bucket.key === requestedBucket)
-    ? requestedBucket as LastContactBucketKey
-    : null;
+  const start = dayStart(params.get("from"));
+  const end = dayStart(params.get("to"));
   const filters = useMemo<FilterState>(() => ({
     ...EMPTY_FILTERS,
-    from: dayStart(params.get("from")),
-    to: dayStart(params.get("to")) === null ? null : dayStart(params.get("to"))! + 86_400_000 - 1,
+    from: start,
+    to: end === null ? null : end + 86_400_000 - 1,
     branch: params.get("branch"),
     source: params.get("source"),
     model: params.get("model"),
     timeBasis: params.get("basis") === "event" ? "event" : "created",
-  }), [params]);
-  const dashboardParams = new URLSearchParams(params.toString());
-  dashboardParams.delete("status");
-  dashboardParams.delete("bucket");
-  dashboardParams.delete("stage");
+  }), [params, start, end]);
+  const paramsWithoutTeamFilters = new URLSearchParams(params.toString());
+  paramsWithoutTeamFilters.delete("status");
+  const period = periodLabel(dataset, filters);
   const view = useMemo(
     () => lastContactByRepresentative(dataset, filters, status === "all" ? null : status),
     [dataset, filters, status],
   );
-  const [selectedBranch, setSelectedBranch] = useState<string | null>(filters.branch);
-
-  const ageOption: EChartsCoreOption = {
-    aria: { enabled: true },
-    color: [bucketColors[0]],
-    tooltip: { trigger: "axis", triggerOn: "mousemove|click", axisPointer: { type: "shadow" } },
-    grid: { left: 58, right: 22, top: 18, bottom: 36 },
-    xAxis: { type: "category", data: view.buckets.map((bucket) => bucket.label) },
-    yAxis: { type: "value", name: "Leads", min: 0, minInterval: 1 },
-    series: [{
-      type: "bar",
-      data: view.buckets.map((bucket) => ({
-        value: bucket.count,
-        itemStyle: { color: selectedBucket === bucket.key ? "#245f8b" : bucketColors[0] },
-      })),
-      barMaxWidth: 48,
-      itemStyle: { borderRadius: [5, 5, 0, 0] },
-    }],
-  };
-
-  const selectedBranchData = view.branches.find((branch) => branch.branchId === selectedBranch);
-  const representativeRows = selectedBranch && selectedBranchData
-    ? selectedBranchData.reps.map((rep) => ({
+  const teamInsights = useMemo(
+    () => actNowInsights(dataset, filters).filter((insight) => insight.id === "cold-preorder-leads").slice(0, 3),
+    [dataset, filters],
+  );
+  const rows = view.reps
+    .filter((rep) => rep.totalCount > 0)
+    .map((rep) => ({
       ...rep,
-      branchId: selectedBranch,
-      branchName: selectedBranchData.branchName,
+      staleCount: rep.counts["over-20"],
+      watchCount: rep.counts["13-20"],
     }))
-    : view.reps;
-  const graphBuckets = selectedBucket
-    ? LAST_CONTACT_BUCKETS.filter((bucket) => bucket.key === selectedBucket)
-    : LAST_CONTACT_BUCKETS;
-  const representativeOption: EChartsCoreOption = {
-    aria: { enabled: true },
-    color: graphBuckets.map((bucket) =>
-      bucketColors[LAST_CONTACT_BUCKETS.findIndex((item) => item.key === bucket.key)] ?? bucketColors[0]),
-    tooltip: { trigger: "axis", triggerOn: "mousemove|click", axisPointer: { type: "shadow" } },
-    legend: { bottom: 0 },
-    grid: { left: 178, right: 28, top: 20, bottom: 56 },
-    xAxis: { type: "value", name: "Leads", min: 0, minInterval: 1 },
-    yAxis: {
-      type: "category",
-      inverse: true,
-      data: representativeRows.map((rep) => rep.repName),
-      axisLabel: { width: 158, overflow: "truncate" },
-    },
-    series: graphBuckets.map((bucket) => ({
-      name: bucket.label,
-      type: "bar",
-      stack: "last-contact-age",
-      barMaxWidth: 24,
-      data: representativeRows.map((rep) => rep.counts[bucket.key]),
-    })),
-  };
+    .sort((a, b) => b.staleCount - a.staleCount || b.totalCount - a.totalCount);
+  const staleTotal = rows.reduce((sum, rep) => sum + rep.staleCount, 0);
+  const branchScope = filters.branch
+    ? dataset.branchById[filters.branch]?.name ?? filters.branch
+    : "all branches";
 
-  function selectAgeBucket(event: ECElementEvent) {
-    const bucket = view.buckets[event.dataIndex ?? -1];
-    if (!bucket) return;
-    updateQuery(router, new URLSearchParams(params.toString()), "bucket",
-      selectedBucket === bucket.key ? "" : bucket.key);
+  function rowHref(repId: string): string {
+    const next = new URLSearchParams(params.toString());
+    next.set("rep", repId);
+    return `/leads?${next.toString()}`;
   }
-
-  function selectBranch(branchId: string) {
-    setSelectedBranch((current) => current === branchId ? null : branchId);
-    if (filters.branch) {
-      updateQuery(router, new URLSearchParams(params.toString()), "branch", "");
-    }
-  }
-
-  const selectedBranchName = dataset.branches.find((branch) => branch.id === selectedBranch)?.name;
-  const selectedBucketLabel = LAST_CONTACT_BUCKETS.find((bucket) => bucket.key === selectedBucket)?.label;
-  const period = periodLabel(dataset, filters);
-  const branchScope = selectedBranchName ??
-    dataset.branches.find((branch) => branch.id === filters.branch)?.name ?? "All branches";
 
   return (
-    <main className="dashboard representatives-page">
-      <header className="dashboard-header">
-        <div>
-          <p className="eyebrow">DEALERPULSE · REPRESENTATIVE PERFORMANCE</p>
-          <h1>Last contacted customers</h1>
-          <p className="as-of">
-            Leads grouped by assigned representative and days since last activity
-            {status !== "all" ? ` · ${status.replaceAll("_", " ")}` : ""}
-            {` · ${period} · ${branchScope} · Last activity: ${selectedBucketLabel ?? "all days"}`}
-          </p>
-        </div>
-        <Link className="insight-link" href={dashboardParams.size ? `/?${dashboardParams.toString()}` : "/"}>
-          ← Dashboard
-        </Link>
-      </header>
+    <PageContainer className="representatives-page section-page">
+      <PageHeader eyebrow="Team" title="Who needs coaching?" className="section-page-header">
+        <p className="section-verdict">
+          {formatNumber(view.totalCount)} assigned leads across {branchScope}; {formatNumber(staleTotal)} have gone more than {LAST_CONTACT_BUCKETS.at(-1)?.min} days without activity.
+        </p>
+        <p className="section-period">{period} · {status === "all" ? "All lead statuses" : status.replaceAll("_", " ")}</p>
+      </PageHeader>
 
-      <section className="representative-filters" aria-label="Representative chart filters">
+      <InsightStrip
+        insights={teamInsights}
+        query={params.toString()}
+        emptyMessage="No stale pre-order leads match the current filters."
+      />
+
+      <section className="representative-filters" aria-label="Team filters">
         <label>
-          <span>Latest lead status</span>
-          <select aria-label="Latest lead status" value={status}
-            onChange={(event) => updateQuery(router, new URLSearchParams(params.toString()), "status",
-              event.target.value === "all" ? "" : event.target.value)}>
+          <span>Lead status</span>
+          <select
+            aria-label="Lead status"
+            value={status}
+            onChange={(event) => {
+              const query = withStatus(new URLSearchParams(params.toString()), event.target.value);
+              router.push(query ? `${pathname}?${query}` : pathname, { scroll: false });
+            }}
+          >
             <option value="all">All statuses</option>
-            {statuses.map((item) => <option key={item} value={item}>{item.replaceAll("_", " ")}</option>)}
+            {statuses.map((item) => (
+              <option key={item} value={item}>{item.replaceAll("_", " ")}</option>
+            ))}
           </select>
         </label>
-        <p>
-          {selectedBranchName
-            ? `Showing ${selectedBranchName}. Select its pie again to compare everyone.`
-            : "Select a branch pie to focus the representative comparison."}
-        </p>
+        <Link className="insight-link" href={paramsWithoutTeamFilters.size ? `/?${paramsWithoutTeamFilters}` : "/"}>
+          View overview
+        </Link>
       </section>
 
-      <section className="representative-age-panel chart-panel" aria-label="Leads by last activity age">
-        <div className="chart-heading">
-          <h3>Leads by days since last activity</h3>
-          <p>Select a bar to focus branch composition and representative totals on that duration. Click it again to clear.</p>
-          <small className="chart-period">{period}</small>
-        </div>
-        <Chart option={ageOption} ariaLabel="Bar chart of lead counts by days since last activity"
-          empty={!view.buckets.some((bucket) => bucket.count > 0)}
-          emptyMessage="No leads match the selected status and dashboard filters."
-          onClick={selectAgeBucket} />
-      </section>
-
-      <section className="branch-composition-section" aria-label="Branch lead composition">
-        <div className="representative-section-heading">
-          <div>
-            <p className="eyebrow">BRANCH COMPOSITION</p>
-            <h2>Assigned leads by branch</h2>
-            <p>Each pie shows the representative share of leads in the selected duration.</p>
-            <small className="chart-period">
-              {period} · {branchScope} · Last activity: {selectedBucketLabel ?? "all days"}
-            </small>
-          </div>
-        </div>
-        <div className="branch-pies-grid">
-          {view.branches.map((branch) => {
-            const rows = branch.reps.map((rep) => ({
-              name: rep.repName,
-              value: selectedBucket
-                ? rep.counts[selectedBucket]
-                : Object.values(rep.counts).reduce((sum, count) => sum + count, 0),
-            })).filter((rep) => rep.value > 0);
-            const option: EChartsCoreOption = {
-              aria: { enabled: true },
-              tooltip: { trigger: "item", formatter: "{b}: {c} leads ({d}%)" },
-              series: [{
-                type: "pie",
-                radius: ["34%", "68%"],
-                center: ["50%", "48%"],
-                label: { show: true, formatter: "{b}: {c}", fontSize: 10 },
-                data: rows,
-              }],
-            };
-            const active = selectedBranch === branch.branchId;
-            return (
-              <article key={branch.branchId}
-                className={`chart-panel branch-pie-panel${active ? " is-selected" : ""}`}>
-                <button className="branch-pie-title" type="button" aria-pressed={active}
-                  onClick={() => selectBranch(branch.branchId)}>
-                  {branch.branchName}{active ? " · selected" : ""}
-                </button>
-                <Chart option={option} ariaLabel={`${branch.branchName} representative share of assigned leads`}
-                  empty={!rows.length} emptyMessage="No leads in this duration and status."
-                  onClick={() => selectBranch(branch.branchId)} />
-              </article>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="representative-graph-panel chart-panel" aria-label="Representative last activity comparison">
-        <div className="chart-heading">
-          <h3>Last contacted customers by representative</h3>
-          <p>
-            {selectedBranchName ? `${selectedBranchName} · ` : "All branches · "}
-            stacked counts by time since last activity. Each lead is assigned to the representative in the source data.
-          </p>
-          <small className="chart-period">
-            {period} · {branchScope} · Last activity: {selectedBucketLabel ?? "all days"}
-          </small>
-        </div>
-        <Chart option={representativeOption}
-          ariaLabel="Stacked horizontal bar chart of last activity age by representative"
-          empty={!representativeRows.some((rep) => Object.values(rep.counts).some((count) => count > 0))}
-          emptyMessage="No representatives have leads matching the selected status, duration, branch and filters." />
-      </section>
-    </main>
+      <PremiumTable
+        title="Representative follow-up"
+        takeaway="Sorted by the number of leads idle for more than 20 days. Select a row to review assigned leads."
+        rows={rows}
+        rowKey={(row) => row.repId}
+        rowHref={(row) => rowHref(row.repId)}
+        emptyMessage="No assigned leads match these filters. Reset filters to see all representatives."
+        emptyAction={{ label: "Reset filters", href: "/team" }}
+        columns={[
+          { label: "Representative", render: (row) => row.repName },
+          { label: "Branch", render: (row) => row.branchName },
+          { label: "Assigned leads", align: "right", render: (row) => formatNumber(row.totalCount) },
+          {
+            label: "Idle 13–20 days",
+            align: "right",
+            render: (row) => formatNumber(row.watchCount),
+          },
+          {
+            label: "Idle over 20 days",
+            align: "right",
+            render: (row) => (
+              <span className="table-bar-value">
+                <span className="table-inline-bar" aria-hidden="true">
+                  <span style={{ width: `${row.totalCount ? row.staleCount / row.totalCount * 100 : 0}%` }} />
+                </span>
+                {formatNumber(row.staleCount)}
+              </span>
+            ),
+          },
+        ]}
+      />
+    </PageContainer>
   );
 }

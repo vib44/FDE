@@ -1,0 +1,242 @@
+
+
+.representative-filters label {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.representative-filters > p {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 0;
+}
+
+.representative-age-panel {
+  margin-top: 16px;
+}
+
+.representative-age-panel .chart-canvas,
+.representative-age-panel .chart-empty,
+.representative-age-panel .chart-skeleton {
+  height: 260px;
+}
+
+.branch-composition-section {
+  margin-top: 28px;
+}
+
+.representative-section-heading {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.representative-section-heading h2 {
+  color: var(--text-muted);
+  font-size: 21px;
+  letter-spacing: -0.03em;
+  margin: 5px 0;
+}
+
+.representative-section-heading p:last-child {
+  color: var(--text-muted);
+  font-size: 12px;
+  margin: 0;
+}
+
+.branch-pies-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.branch-pie-panel {
+  padding: 12px 14px;
+}
+
+.branch-pie-panel.is-selected {
+  border-color: var(--accent);
+  box-shadow: none;
+}
+
+.branch-pie-title {
+  background: none;
+  border: 0;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  min-height: 40px;
+  padding: 3px 0;
+  text-align: left;
+}
+
+.branch-pie-panel .chart-canvas,
+.branch-pie-panel .chart-empty,
+.branch-pie-panel .chart-skeleton {
+  height: 230px;
+}
+
+.branch-pie-panel .chart-empty {
+  font-size: 11px;
+}
+
+.representative-graph-panel {
+  margin-top: 18px;
+  padding: 18px 20px;
+}
+
+.representative-graph-panel .chart-heading {
+  min-height: 64px;
+}
+
+.representative-graph-panel .chart-canvas,
+.representative-graph-panel .chart-empty,
+.representative-graph-panel .chart-skeleton {
+  height: 560px;
+}
+
+.chart-canvas,
+.chart-skeleton,
+.chart-empty {
+  height: 285px;
+  max-width: 100%;
+  min-width: 0;
+  width: 100%;
+}
+
+.chart-canvas.is-interactive {
+  cursor: pointer;
+}
+
+.chart-skeleton {
+  animation: chart-pulse 1.4s ease-in-out infinite;
+  background: var(--surface-raised);
+  background-size: 200% 100%;
+  border-radius: 8px;
+}
+
+.chart-empty {
+  align-items: center;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text-muted);
+  flex-direction: column;
+  display: flex;
+  font-size: 13px;
+  gap: 6px;
+  justify-content: center;
+  padding: 18px;
+  text-align: center;
+}
+
+.chart-empty strong {
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+.chart-empty p {
+  font-size: 11px;
+  line-height: 1.5;
+  margin: 0;
+  max-width: 32ch;
+}
+
+.empty-state-icon {
+  align-items: center;
+  background: var(--surface-raised);
+  border-radius: 50%;
+  color: var(--text-muted);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 18px;
+  font-weight: 600;
+  height: 40px;
+  justify-content: center;
+  width: 40px;
+}
+
+.leads-table-wrap {
+  overflow: hidden;
+}
+
+.leads-table-wrap {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  max-width: 100%;
+}
+
+.leads-table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  text-align: left;
+  width: 100%;
+}
+
+.leads-table th,
+.leads-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 12px 14px;
+}
+
+.leads-table th {
+  color: var(--text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.leads-table td {
+  color: var(--text-muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.leads-empty {
+  align-items: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px;
+  text-align: center;
+}
+
+.leads-empty h2 {
+  color: var(--text-muted);
+  font-size: 20px;
+  margin: 0;
+}
+
+.leads-empty p {
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+  max-width: 48ch;
+}
+
+.empty-state-link,
+.route-error-retry {
+  align-items: center;
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--accent);
+  cursor: pointer;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 700;
+  justify-content: center;
+  min-height: 44px;
+  padding: 8px 14px;
+  text-decoration: none;
+}

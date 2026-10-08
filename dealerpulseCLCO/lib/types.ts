@@ -28,7 +28,7 @@ export interface Dataset {
   leadById: Record<string, Lead>;
   sources: string[]; models: string[]; months: string[];
 }
-export type TimeBasis = "created" | "event";
+type TimeBasis = "created" | "event";
 export interface FilterState {
   from: number | null; to: number | null; // ms, inclusive
   branch: string | null; rep: string | null; source: string | null; model: string | null;
@@ -63,12 +63,12 @@ export interface OverviewVM {
     summary: string;
   };
 }
-export interface ChartViewModel<T> {
+interface ChartViewModel<T> {
   title: string;
   takeaway: string;
   data: T[];
 }
-export interface TargetActualPoint {
+interface TargetActualPoint {
   branchId: string;
   branchName: string;
   actual: number;
@@ -76,7 +76,7 @@ export interface TargetActualPoint {
   attainment: number | null;
 }
 export type TargetActualVM = ChartViewModel<TargetActualPoint>;
-export interface ScorecardMetric {
+interface ScorecardMetric {
   key: "leadVolume" | "winRate" | "orderAttainment" | "onTimeDelivery";
   label: string;
 }
@@ -90,18 +90,18 @@ export interface BranchScorecardVM extends ChartViewModel<ScorecardPoint> {
   metrics: ScorecardMetric[];
   summary: ScorecardPoint;
 }
-export interface FunnelPoint {
+interface FunnelPoint {
   stage: string;
   count: number;
   conversion: number | null;
 }
 export type FunnelVM = ChartViewModel<FunnelPoint>;
-export interface MonthlyLeadFlowPoint {
+interface MonthlyLeadFlowPoint {
   month: string;
   count: number;
 }
 export type MonthlyLeadFlowVM = ChartViewModel<MonthlyLeadFlowPoint>;
-export interface OrderAgingPoint {
+interface OrderAgingPoint {
   branchId: string;
   branchName: string;
   under7: number;
@@ -110,13 +110,13 @@ export interface OrderAgingPoint {
   over30: number;
 }
 export type OrderAgingVM = ChartViewModel<OrderAgingPoint>;
-export interface DelayReasonPoint {
+interface DelayReasonPoint {
   reason: string;
   count: number;
   cumulativePct: number;
 }
 export type DelayParetoVM = ChartViewModel<DelayReasonPoint>;
-export interface SourceQualityPoint {
+interface SourceQualityPoint {
   source: string;
   leads: number;
   winRate: number | null;

@@ -7,7 +7,7 @@ import { attainment } from "../lib/metrics/targets.ts";
 import { EMPTY_FILTERS } from "../lib/types.ts";
 
 const ds = normalize(JSON.parse(readFileSync("data/dealership_data.json", "utf8")));
-const L = ds.leads, p = (k: string, v: unknown) => console.log(k.padEnd(34), v);
+const L = ds.leads, p = (k: string, v: unknown) => process.stdout.write(`${k.padEnd(34)} ${String(v)}\n`);
 const n = (s: string) => L.filter((l) => l.status === s).length;
 p("asOf", new Date(ds.asOf).toISOString());
 p("leads/delivered/lost/open", [L.length, n("delivered"), n("lost"), L.length - n("delivered") - n("lost")].join(" / "));

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { BranchAlertData } from "../lib/metrics/branch-alert-data.ts";
 import { branchAlertData } from "../lib/metrics/branch-alert-data.ts";
 import type { Dataset, FilterState } from "../lib/types.ts";
+import { Card } from "./shared-ui.tsx";
 
 interface AiAlert {
   id: string;
@@ -124,7 +125,7 @@ export function AiAlertsCard({
   }
 
   return (
-    <article className="chart-panel ai-alert-panel">
+    <Card className="chart-panel ai-alert-panel">
       <div className="ai-alert-heading">
         <div>
           <h3>Priority Alerts</h3>
@@ -177,6 +178,6 @@ export function AiAlertsCard({
       <p className="ai-alert-feedback" aria-live="polite">
         {storageWarning ? "Alert actions may not persist in this browser." : message}
       </p>
-    </article>
+    </Card>
   );
 }

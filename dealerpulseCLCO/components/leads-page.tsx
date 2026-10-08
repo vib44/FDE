@@ -8,13 +8,10 @@ import { periodLabel } from "../lib/period.ts";
 import { filterLeads } from "../lib/metrics/filters.ts";
 import type { FilterState, Lead } from "../lib/types.ts";
 import { EMPTY_FILTERS } from "../lib/types.ts";
+import { formatCurrency } from "../lib/format.ts";
 import { useDataset } from "./dataset-provider.tsx";
+import { PageContainer, PageHeader } from "./shared-ui.tsx";
 
-const currency = new Intl.NumberFormat("en-IN", {
-  style: "currency",
-  currency: "INR",
-  maximumFractionDigits: 0,
-});
 const dateFormat = new Intl.DateTimeFormat("en-IN", {
   day: "2-digit",
   month: "short",
@@ -60,6 +57,10 @@ export function LeadsPage() {
   const rep = params.get("rep") ?? "";
   const source = params.get("source") ?? "";
   const model = params.get("model") ?? "";
+  const leadIds = useMemo(() => {
+    const value = params.get("leadIds");
+    return value ? new Set(value.split(",").filter(Boolean)) : null;
+  }, [params]);
   const filters = useMemo<FilterState>(() => ({
     ...EMPTY_FILTERS,
     from,
@@ -78,6 +79,7 @@ export function LeadsPage() {
 
   const leads = useMemo(() => {
     const filtered = filterLeads(dataset, filters).filter((lead) => {
+      if (leadIds && !leadIds.has(lead.id)) return false;
       if (status && lead.status !== status) return false;
       if (!stage) return true;
       const reachedAt = lead.reached[stage];
@@ -90,7 +92,7 @@ export function LeadsPage() {
       return (sortDirection === "asc" ? comparison : -comparison) ||
         a.customerName.localeCompare(b.customerName) || a.id.localeCompare(b.id);
     });
-  }, [dataset, filters, stage, status, sortField, sortDirection]);
+  }, [dataset, filters, leadIds, stage, status, sortField, sortDirection]);
 
   function updateParam(key: string, value: string) {
     const next = new URLSearchParams(params.toString());
@@ -107,18 +109,18 @@ export function LeadsPage() {
     : null;
 
   return (
-    <main className="dashboard leads-page">
-      <header className="dashboard-header">
-        <div>
-          <p className="eyebrow">DEALERPULSE · LEAD DETAIL</p>
-          <h1>{stage ? `Leads that reached ${stage.replaceAll("_", " ")}` : "Filtered leads"}</h1>
-          <p className="as-of">
-            {leads.length} {leads.length === 1 ? "lead" : "leads"} · {period} ·
-            {" "}{branchName ? `Branch: ${branchName}` : "All branches"}
-          </p>
-        </div>
-        <Link className="insight-link" href={backHref}>← Dashboard</Link>
-      </header>
+    <PageContainer className="leads-page">
+      <PageHeader
+        eyebrow="DEALERPULSE · LEAD DETAIL"
+        title={stage ? `Leads that reached ${stage.replaceAll("_", " ")}` : "Filtered leads"}
+        className="dashboard-header"
+        actions={<Link className="insight-link" href={backHref}>← Dashboard</Link>}
+      >
+        <p className="as-of">
+          {leads.length} {leads.length === 1 ? "lead" : "leads"} · {period} ·
+          {" "}{branchName ? `Branch: ${branchName}` : "All branches"}
+        </p>
+      </PageHeader>
 
       <section className="leads-filter-bar" aria-label="Lead list filters">
         <label>
@@ -130,35 +132,11 @@ export function LeadsPage() {
           </select>
         </label>
         <label>
-          <span>Branch</span>
-          <select aria-label="Branch filter" value={branch}
-            onChange={(event) => updateParam("branch", event.target.value)}>
-            <option value="">All branches</option>
-            {dataset.branches.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </select>
-        </label>
-        <label>
           <span>Representative</span>
           <select aria-label="Representative filter" value={rep}
             onChange={(event) => updateParam("rep", event.target.value)}>
             <option value="">All representatives</option>
             {dataset.reps.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-          </select>
-        </label>
-        <label>
-          <span>Source</span>
-          <select aria-label="Source filter" value={source}
-            onChange={(event) => updateParam("source", event.target.value)}>
-            <option value="">All sources</option>
-            {dataset.sources.map((item) => <option key={item} value={item}>{item.replaceAll("_", " ")}</option>)}
-          </select>
-        </label>
-        <label>
-          <span>Model</span>
-          <select aria-label="Model filter" value={model}
-            onChange={(event) => updateParam("model", event.target.value)}>
-            <option value="">All models</option>
-            {dataset.models.map((item) => <option key={item} value={item}>{item}</option>)}
           </select>
         </label>
         <label>
@@ -207,7 +185,7 @@ export function LeadsPage() {
                   <td data-label="Model">{lead.model}</td>
                   <td data-label="Current status">{lead.status.replaceAll("_", " ")}</td>
                   <td data-label="Last contacted">{formatDate(lead.lastActivityAt)}</td>
-                  <td data-label="Deal value">{currency.format(lead.dealValue)}</td>
+                  <td data-label="Deal value">{formatCurrency(lead.dealValue)}</td>
                 </tr>
               ))}
             </tbody>
@@ -221,6 +199,6 @@ export function LeadsPage() {
           <Link className="empty-state-link" href="/">Browse all leads</Link>
         </section>
       )}
-    </main>
+    </PageContainer>
   );
 }

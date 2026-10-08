@@ -1,16 +1,19 @@
 "use client";
 
 import { useMemo } from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { FilterBar } from "./filter-bar.tsx";
-import { useDataset } from "./dataset-provider.tsx";
-import { DashboardCharts } from "./dashboard-charts.tsx";
+import { EMPTY_FILTERS } from "../lib/types.ts";
+import type { OverviewKPI, OverviewStatus } from "../lib/types.ts";
 import { toDay } from "../lib/dates.ts";
+import { periodLabel } from "../lib/period.ts";
+import { formatCurrency, formatNumber, formatPercent } from "../lib/format.ts";
 import { overviewVM } from "../lib/metrics/overview.ts";
 import { actNowInsights } from "../lib/metrics/insights.ts";
-import { EMPTY_FILTERS } from "../lib/types.ts";
-import type { OverviewFormat, OverviewKPI, OverviewStatus } from "../lib/types.ts";
-import { periodLabel } from "../lib/period.ts";
+import { branchHealthRows } from "../lib/metrics/branch-health.ts";
+import { targetActualByBranch } from "../lib/metrics/dashboard-charts.ts";
+import { useDataset } from "./dataset-provider.tsx";
+import { Card, CardHeader, Grid, PageContainer, PageHeader, PremiumTable } from "./shared-ui.tsx";
 
 function dayStart(value: string | null): number | null {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
@@ -23,54 +26,28 @@ function dayEnd(value: string | null): number | null {
   return start === null ? null : start + 86_400_000 - 1;
 }
 
-const numberFormat = new Intl.NumberFormat("en-IN", { maximumFractionDigits: 0 });
-const currencyFormat = new Intl.NumberFormat("en-IN", {
-  style: "currency",
-  currency: "INR",
-  maximumFractionDigits: 0,
-});
-
-function formatValue(value: number | null, format: OverviewFormat): string {
+function formatValue(value: number | null, format: OverviewKPI["format"]): string {
   if (value === null) return "—";
   switch (format) {
-    case "currency": return currencyFormat.format(value);
-    case "number": return numberFormat.format(value);
-    case "percent": return `${(value * 100).toFixed(1)}%`;
+    case "currency": return formatCurrency(value);
+    case "number": return formatNumber(value);
+    case "percent": return formatPercent(value);
     case "days": return `${value.toFixed(1)} days`;
   }
 }
 
-function formatDelta(kpi: OverviewKPI): string {
-  if (kpi.delta === null) return "No prior-period comparison";
+function formatDelta(kpi: OverviewKPI): string | null {
+  if (kpi.delta === null) return null;
   const sign = kpi.delta > 0 ? "+" : "";
-  let amount: string;
+  let delta: string;
   switch (kpi.format) {
-    case "currency": amount = `${sign}${currencyFormat.format(kpi.delta)}`; break;
-    case "number": amount = `${sign}${numberFormat.format(kpi.delta)}`; break;
-    case "percent": amount = `${sign}${(kpi.delta * 100).toFixed(1)} pp`; break;
-    case "days": amount = `${sign}${kpi.delta.toFixed(1)} days`; break;
+    case "currency": delta = `${sign}${formatCurrency(kpi.delta)}`; break;
+    case "number": delta = `${sign}${formatNumber(kpi.delta)}`; break;
+    case "percent": delta = `${sign}${(kpi.delta * 100).toFixed(1)} pp`; break;
+    case "days": delta = `${sign}${kpi.delta.toFixed(1)} days`; break;
   }
-  const relative = kpi.deltaPct === null ? "" : ` (${kpi.deltaPct > 0 ? "+" : ""}${(kpi.deltaPct * 100).toFixed(1)}%)`;
-  return `${amount}${relative} vs prior period`;
-}
-
-function trendPath(values: (number | null)[]): string {
-  const finite = values.filter((value): value is number => value !== null && Number.isFinite(value));
-  if (!finite.length) return "";
-  const min = Math.min(...finite);
-  const range = Math.max(...finite) - min || 1;
-  let drawing = false;
-  return values.map((value, index) => {
-    if (value === null || !Number.isFinite(value)) {
-      drawing = false;
-      return "";
-    }
-    const x = (index / Math.max(1, values.length - 1)) * 88;
-    const y = 21 - ((value - min) / range) * 18;
-    const command = drawing ? "L" : "M";
-    drawing = true;
-    return `${command}${x.toFixed(1)},${y.toFixed(1)}`;
-  }).filter(Boolean).join(" ");
+  const relative = kpi.deltaPct === null ? "" : ` (${sign}${(kpi.deltaPct * 100).toFixed(1)}%)`;
+  return `${delta}${relative} vs previous period`;
 }
 
 const statusLabels: Record<OverviewStatus, string> = {
@@ -80,10 +57,16 @@ const statusLabels: Record<OverviewStatus, string> = {
   neutral: "No comparison",
 };
 
-const severityLabels = { high: "High priority", medium: "Needs attention", low: "Monitor" } as const;
+const digestSections = [
+  { label: "Targets", href: "/targets", matches: (id: string) => id === "branches-below-target" },
+  { label: "Funnel", href: "/funnel", matches: (id: string) => id.startsWith("conversion-") || id.startsWith("source-quality-") },
+  { label: "Delivery", href: "/delivery", matches: (id: string) => id.includes("order") || id.includes("delivery") },
+  { label: "Branches", href: "/branches", matches: (id: string) => id.includes("branch") },
+  { label: "Team", href: "/team", matches: (id: string) => id.includes("cold") },
+] as const;
 
 export default function Dashboard() {
-  const { dataset, hash, error } = useDataset();
+  const { dataset } = useDataset();
   const searchParams = useSearchParams();
   const filters = useMemo(() => ({
     ...EMPTY_FILTERS,
@@ -96,77 +79,179 @@ export default function Dashboard() {
   }), [searchParams]);
   const overview = useMemo(() => overviewVM(dataset, filters), [dataset, filters]);
   const insights = useMemo(() => actNowInsights(dataset, filters), [dataset, filters]);
+  const branchRows = useMemo(() => branchHealthRows(dataset, filters), [dataset, filters]);
+  const rankedBranchRows = useMemo(
+    () => branchRows.map((row, index) => ({ ...row, rank: index + 1 })),
+    [branchRows],
+  );
+  const orderTargets = useMemo(() => targetActualByBranch(dataset, filters), [dataset, filters]);
   const period = periodLabel(dataset, filters);
+  const primaryInsight = insights[0];
+  const lowestAttainment = branchRows.find((row) => row.revenuePct !== null);
+  const verdictTitle = overview.verdict.status === "risk"
+    ? "Business performance is below target"
+    : overview.verdict.status === "watch"
+      ? "Business performance needs attention"
+      : overview.verdict.status === "good"
+        ? "Business performance is on track"
+        : "Business performance snapshot";
+  const verdictSummary = [
+    lowestAttainment
+      ? `${lowestAttainment.branchName} has the lowest revenue attainment at ${formatPercent(lowestAttainment.revenuePct!)}.`
+      : null,
+    primaryInsight ? `Priority: ${primaryInsight.headline}${/[.!?]$/.test(primaryInsight.headline) ? "" : "."}` : null,
+    overview.kpis.find((kpi) => kpi.id === "winRate")?.value == null
+      ? "No leads have closed in this view yet."
+      : `Closed win rate is ${formatPercent(overview.kpis.find((kpi) => kpi.id === "winRate")!.value!)}.`,
+  ].filter(Boolean).join(" ");
+  const attainmentKPI = overview.kpis.find((kpi) => kpi.id === "attainment");
+  const labels = {
+    revenue: "Revenue",
+    deliveries: "Deliveries",
+    winRate: "Closed win rate",
+    pipelineValue: "Active pipeline",
+    attainment: "Target attainment",
+  } as const;
+  const cards = overview.kpis
+    .filter((kpi) => kpi.id in labels)
+    .map((kpi) => ({ ...kpi, displayLabel: labels[kpi.id as keyof typeof labels] }));
 
-  function leadsHref(filterOverrides: Partial<typeof filters>): string {
+  function pageHref(path: string): string {
+    const query = searchParams.toString();
+    return query ? `${path}?${query}` : path;
+  }
+
+  function branchHref(branchId: string): string {
     const params = new URLSearchParams(searchParams.toString());
-    for (const key of ["branch", "source", "model"] as const) {
-      if (key in filterOverrides) {
-        const value = filterOverrides[key];
-        if (value) params.set(key, value);
-        else params.delete(key);
-      }
-    }
-    const query = params.toString();
-    return query ? `/?${query}` : "/";
+    params.set("branch", branchId);
+    return `/branches?${params.toString()}#branch-${encodeURIComponent(branchId)}`;
   }
 
   return (
-    <main className="dashboard">
-      <header className="dashboard-header">
-        <div>
-          <p className="eyebrow" style={{ fontSize: "1.25rem" }}>DEALERPULSE · PERFORMANCE OVERVIEW</p>
-          <p className="as-of">{period} · {filters.timeBasis === "created" ? "By lead created date" : "By event date"}</p>
-        </div>
-        <div className="data-status" aria-live="polite">
-          {error ? "Dataset refresh failed" : "Dataset connected"}
-          <span title={`SHA-256 ${hash}`}> · {hash.slice(0, 10)}</span>
-        </div>
-      </header>
-      <section className="overview" aria-label="Filtered dataset overview">
-      
-        <div className="kpi-heading">
-          <div>
-            <p className="scope-caption">All active filters applied to each metric’s event definition.</p>
+    <PageContainer className="overview-dashboard">
+      <PageHeader eyebrow="Performance overview" title="Business overview" className="dashboard-header">
+        <p className="as-of">{period} · {filters.timeBasis === "created" ? "By lead created date" : "By event date"}</p>
+      </PageHeader>
+
+      <section className="overview-top-row" aria-label="Business status and key results">
+        <Card className={`executive-verdict status-${overview.verdict.status}`} aria-live="polite">
+          <div className="verdict-heading">
+            <span className="verdict-indicator" aria-hidden="true" />
+            <p className="card-label">Business verdict</p>
+            <span className="status-label">{statusLabels[overview.verdict.status]}</span>
           </div>
-          <span className="comparison-caption">
-            Change is compared with the previous equal-length date range.
-            <br />Orders and delivery metrics always use event dates.
-          </span>
-        </div>
-        <div className="kpi-strip">
-          {overview.kpis.map((kpi) => (
-            <article key={kpi.id} className={`kpi-card status-${kpi.status}`}>
+          <h2>{verdictTitle}</h2>
+          <p>{verdictSummary || overview.verdict.summary}</p>
+          {overview.verdict.title === "Targets may need recalibration" &&
+            attainmentKPI?.value !== null && attainmentKPI?.value !== undefined && (
+            <p className="verdict-note">
+              Review whether targets need recalibration; current delivery revenue attainment is {formatPercent(attainmentKPI.value)}.
+            </p>
+          )}
+        </Card>
+        <Grid className="overview-kpis" role="group" aria-label="Key results">
+          {cards.map((card) => (
+            <Card key={card.id} className={`kpi-card status-${card.status}`}>
               <div className="kpi-topline">
-                <span className="card-label">{kpi.label}</span>
-                <span className="kpi-status" aria-label={statusLabels[kpi.status]} title={statusLabels[kpi.status]}>
+                <span className="card-label">{card.displayLabel}</span>
+                <span className="kpi-status" aria-label={statusLabels[card.status]} title={statusLabels[card.status]}>
                   <span className="status-shape" aria-hidden="true" />
                 </span>
               </div>
-              <strong className="kpi-value">{formatValue(kpi.value, kpi.format)}</strong>
-              <div className="kpi-bottomline">
-                <p className="kpi-delta">{formatDelta(kpi)}</p>
-                <svg className="kpi-sparkline" viewBox="0 0 88 24" role="img" aria-label={`${kpi.label} trend`}>
-                  <path d={trendPath(kpi.trend)} />
-                </svg>
-              </div>
-              <p className="kpi-note">{kpi.note}</p>
-            </article>
+              <strong className="kpi-value">{formatValue(card.value, card.format)}</strong>
+              {card.delta !== null && <p className="kpi-delta">{formatDelta(card)}</p>}
+            </Card>
           ))}
-        </div>
+        </Grid>
       </section>
-       <article className={`executive-verdict status-${overview.verdict.status}`} aria-live="polite">
-          <div className="verdict-heading">
-            <span className="verdict-indicator" aria-hidden="true" />
-            <p className="card-label">Executive verdict</p>
-            <span className="status-label">{statusLabels[overview.verdict.status]}</span>
-          </div>
-          <h2>{overview.verdict.title}</h2>
-          <p>{overview.verdict.summary}</p>
-        </article>
-      <FilterBar />
-      <p className="chart-instruction">Click on the bar object or plotted points for rep level information</p>
-      <DashboardCharts dataset={dataset} filters={filters} />
-    </main>
+
+      <Card className="overview-digest" aria-label="Section priorities">
+        <CardHeader title="At a glance" takeaway="The top current priority in each area." />
+        <ul>
+          {digestSections.map((section) => {
+            const insight = insights.find((item) => section.matches(item.id));
+            return (
+              <li key={section.label}>
+                <span>{section.label}</span>
+                <Link href={pageHref(section.href)}>
+                  {insight
+                    ? `${insight.headline}${/[.!?]$/.test(insight.headline) ? "" : "."} ${insight.evidence}`
+                    : "No priority action flagged for these filters."}
+                  <span className="digest-arrow" aria-hidden="true">→</span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </Card>
+
+      <Card className="target-progress-card">
+        <CardHeader
+          title="Orders booked against target"
+          takeaway={orderTargets.takeaway}
+        />
+        {orderTargets.data.length ? (
+          <ul className="target-progress-list">
+            {orderTargets.data
+              .slice()
+              .sort((a, b) => (a.attainment ?? -1) - (b.attainment ?? -1))
+              .map((row) => {
+                const percent = row.attainment === null ? null : row.attainment * 100;
+                return (
+                  <li key={row.branchId}>
+                    <Link href={branchHref(row.branchId)} title={`View ${row.branchName} branch`}>
+                      <span className="target-progress-name">{row.branchName}</span>
+                      <span className="target-progress-track" aria-hidden="true">
+                        <span
+                          className={`target-progress-fill${percent !== null && percent < 50 ? " is-low" : ""}`}
+                          style={{ width: `${Math.min(100, Math.max(0, percent ?? 0))}%` }}
+                        />
+                      </span>
+                      <span className="target-progress-value">
+                        {row.attainment === null ? "No target" : formatPercent(row.attainment)}
+                      </span>
+                      <span className="target-progress-context">
+                        {formatNumber(row.actual)} / {formatNumber(row.target)} orders
+                      </span>
+                    </Link>
+                  </li>
+                );
+              })}
+          </ul>
+        ) : (
+          <p className="premium-table-empty">No order targets match the selected filters.</p>
+        )}
+      </Card>
+
+      <PremiumTable
+        title="Branch health"
+        takeaway="Compare delivered revenue, progress to target and closed outcomes."
+        rows={rankedBranchRows}
+        rowKey={(row) => row.branchId}
+        rowHref={(row) => branchHref(row.branchId)}
+        highlightRow={(row) => row.branchId === branchRows[0]?.branchId}
+        emptyMessage="No branch results match the current filters."
+        emptyAction={{ label: "Reset filters", href: "/" }}
+        columns={[
+          { label: "Rank", align: "right", render: (row) => formatNumber(row.rank) },
+          { label: "Branch", render: (row) => row.branchName },
+          { label: "Revenue", align: "right", render: (row) => formatCurrency(row.revenue) },
+          {
+            label: "Attainment",
+            align: "right",
+            render: (row) => row.revenuePct === null ? "—" : formatPercent(row.revenuePct),
+          },
+          { label: "Win rate", align: "right", render: (row) => row.winRate === null ? "—" : formatPercent(row.winRate) },
+          {
+            label: "Status",
+            render: (row) => (
+              <span className={`branch-status status-${row.status}`}>
+                <span className="status-shape" aria-hidden="true" />{statusLabels[row.status]}
+              </span>
+            ),
+          },
+        ]}
+      />
+    </PageContainer>
   );
 }

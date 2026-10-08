@@ -1,6 +1,6 @@
 import type { BranchAlertData } from "./branch-alert-data.ts";
 
-export interface LocalPriorityAlert {
+interface LocalPriorityAlert {
   id: string;
   branchId: string;
   branchName: string;

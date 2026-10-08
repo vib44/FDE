@@ -3,11 +3,12 @@ import { toMonth } from "../dates.ts";
 import type { Dataset, FilterState } from "../types.ts";
 import { ratio } from "./stats.ts";
 
-export type TargetBasis = "orders" | "deliveries";
+type TargetBasis = "orders" | "deliveries";
 
 /** Attainment per branch-month: actual units & revenue (deal_value) vs target.
  *  basis "orders" -> order_placed timestamp; "deliveries" -> delivery_date. Always event dates. */
-export function attainment(ds: Dataset, f: FilterState, basis: TargetBasis) {
+export function attainment(ds: Dataset, f: FilterState, basis: TargetBasis)
+ {
   const rows = ds.targets.filter((t) => (!f.branch || t.branchId === f.branch) &&
     (f.from === null || t.month >= toMonth(f.from)) && (f.to === null || t.month <= toMonth(f.to)));
   const key = (b: string, m: string) => `${b}|${m}`;

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { PageContainer } from "./shared-ui.tsx";
 
 export function RouteError({
   error,
@@ -16,7 +17,7 @@ export function RouteError({
   }, [error]);
 
   return (
-    <main className="dashboard route-error-page">
+    <PageContainer className="route-error-page">
       <section className="route-error-card" role="alert">
         <span className="empty-state-icon error-state-icon" aria-hidden="true">!</span>
         <p className="eyebrow">DEALERPULSE · SOMETHING WENT WRONG</p>
@@ -24,6 +25,6 @@ export function RouteError({
         <p>We couldn’t prepare this view. Your data is unchanged; try loading it again.</p>
         <button className="route-error-retry" type="button" onClick={reset}>Try again</button>
       </section>
-    </main>
+    </PageContainer>
   );
 }

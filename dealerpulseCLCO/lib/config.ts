@@ -8,12 +8,6 @@ export const PRE_ORDER_STAGES: readonly Stage[] = ["new", "contacted", "test_dri
 export const ORDER_STAGE: Stage = "order_placed";
 export const DELIVERED_STAGE: Stage = "delivered";
 export const FIRST_RESPONSE_STAGE: Stage = "contacted";
-export const TEST_DRIVE_STAGE: Stage = "test_drive";
-
-export const STAGE_COLORS: Record<Stage, string> = {
-  new: "#6b7a99", contacted: "#5b8def", test_drive: "#3fb8c9",
-  negotiation: "#e0a53a", order_placed: "#9b7bea", delivered: "#3fb97f",
-};
 
 export const THRESHOLDS = {
   coldLeadDays: 14,           // pre-order lead idle longer than this is "cold"
@@ -24,3 +18,10 @@ export const THRESHOLDS = {
   slowResponseHours: 24,      // first-response benchmark line
   minLeadsForOutlier: 10,
 } as const;
+
+export const DELIVERY_AGE_BUCKETS = [
+  { label: "0–6 days", upperDays: 7, inclusive: false },
+  { label: "7–14 days", upperDays: 15, inclusive: false },
+  { label: "15–30 days", upperDays: 30, inclusive: true },
+  { label: "Over 30 days", upperDays: null, inclusive: false },
+] as const;

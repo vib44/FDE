@@ -25,15 +25,5 @@ export function funnel(leads: Lead[]) {
 export function stageConversion(leads: Lead[], from: Stage, to: Stage): number | null {
   return ratio(leads.filter((l) => l.reached[to] !== null).length, leads.filter((l) => l.reached[from] !== null).length);
 }
-/** Stage of loss = last non-lost status in status_history (works even if the "lost" event is missing). */
-export function lossByStage(leads: Lead[]) {
-  const out: Record<string, Record<string, number>> = {};
-  for (const l of leads) {
-    if (l.status !== LOST) continue;
-    const stage = l.lostStage ?? "unknown", reason = l.lostReason ?? "Unspecified";
-    ((out[reason] ??= {})[stage] = (out[reason]![stage] ?? 0) + 1);
-  }
-  return out;
-}
 /** Data quality: lost leads that have no "lost" history event. */
 export const lostWithoutEvent = (leads: Lead[]) => leads.filter((l) => l.status === LOST && !l.hasLostEvent);

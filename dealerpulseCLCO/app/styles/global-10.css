@@ -1,0 +1,171 @@
+
+
+  .executive-verdict,
+  .chart-panel,
+  .kpi-card,
+  .section-insight-strip,
+  .section-details {
+    padding: 20px;
+  }
+
+  .executive-verdict h2,
+  .overview-section-heading h2,
+  .section-insight-strip h2 {
+    color: var(--text-primary);
+  }
+
+  .executive-verdict > p,
+  .insight-evidence,
+  .insight-action,
+  .insight-details,
+  .insight-details strong,
+  .insight-action strong,
+  .section-question,
+  .section-period,
+  .section-details p {
+    color: var(--text-muted);
+  }
+
+  .status-good .verdict-indicator,
+  .status-good .status-shape,
+  .kpi-card.status-good .kpi-status {
+    background: var(--good);
+    color: var(--good);
+  }
+
+  .status-watch .verdict-indicator,
+  .status-watch .status-shape,
+  .kpi-card.status-watch .kpi-status {
+    background: var(--warn);
+    color: var(--warn);
+  }
+
+  .status-risk .verdict-indicator,
+  .status-risk .status-shape,
+  .kpi-card.status-risk .kpi-status {
+    background: var(--bad);
+    color: var(--bad);
+  }
+
+  .status-neutral .verdict-indicator,
+  .status-neutral .status-shape {
+    background: var(--chart-context);
+    color: var(--chart-context);
+  }
+
+  .executive-verdict.status-good {
+    border-left-color: var(--good);
+  }
+
+  .executive-verdict.status-watch {
+    border-left-color: var(--warn);
+  }
+
+  .executive-verdict.status-risk {
+    border-left-color: var(--bad);
+  }
+
+  .status-label,
+  .insight-severity {
+    background: var(--surface-raised);
+    border-color: var(--border);
+    color: var(--text-muted);
+  }
+
+  .insight-card {
+    background: var(--surface-raised);
+    border-color: var(--border);
+    border-left-color: var(--warn);
+    border-radius: 10px;
+  }
+
+  .insight-card.severity-high {
+    border-left-color: var(--bad);
+  }
+
+  .insight-card.severity-low {
+    border-left-color: var(--chart-context);
+  }
+
+  .insight-severity.severity-high {
+    background: color-mix(in srgb, var(--bad) 15%, var(--surface));
+    color: var(--bad);
+  }
+
+  .insight-severity.severity-medium {
+    background: color-mix(in srgb, var(--warn) 15%, var(--surface));
+    color: var(--warn);
+  }
+
+  .insight-link,
+  .overview-drilldowns a,
+  .section-more-link,
+  .branch-health-table a,
+  .empty-state-link,
+  .route-error-retry {
+    background: var(--surface-raised);
+    border-color: var(--border);
+    color: var(--accent);
+  }
+
+  .insight-link:hover,
+  .overview-drilldowns a:hover,
+  .empty-state-link:hover,
+  .route-error-retry:hover {
+    background: var(--accent-soft);
+  }
+
+  .overview-dashboard .overview-top-row {
+    align-items: stretch;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: minmax(220px, 3fr) minmax(0, 9fr);
+    margin-bottom: 16px;
+  }
+
+  .skeleton-kpis {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .skeleton-charts {
+    grid-template-columns: minmax(0, 2fr) minmax(260px, 1fr);
+  }
+
+  .overview-dashboard .executive-verdict {
+    margin: 0;
+    padding: 16px;
+  }
+
+  .overview-dashboard .executive-verdict h2 {
+    font-size: 19px;
+  }
+
+  .overview-kpis {
+    display: grid;
+    gap: 8px;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+
+  .overview-kpis .kpi-card {
+    padding: 14px 12px;
+  }
+
+  .overview-kpis .kpi-value {
+    font-size: clamp(19px, 1.8vw, 28px);
+    margin: 12px 0 6px;
+  }
+
+  .overview-kpis .overview-kpi-context {
+    font-size: 11px;
+    line-height: 1.4;
+    margin: 0 0 7px;
+    min-height: 31px;
+  }
+
+  .overview-kpis .kpi-bottomline {
+    align-items: end;
+    border-top: 1px solid var(--border);
+    gap: 5px;
+    min-height: 34px;
+    padding-top: 7px;
+  }

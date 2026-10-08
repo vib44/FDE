@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { normalize } from "../lib/data/normalize.ts";
 import { closedWinRate, funnel, lostWithoutEvent, stageConversion } from "../lib/metrics/funnel.ts";
 import { medianFirstResponse } from "../lib/metrics/response.ts";
-import { awaitingOrders, coldLeads, delayStats, overdueOpen } from "../lib/metrics/delivery.ts";
+import { awaitingOrders, coldLeads, delayStats, deliverySectionData, overdueOpen } from "../lib/metrics/delivery.ts";
 import { attainment } from "../lib/metrics/targets.ts";
 import { filterLeads } from "../lib/metrics/filters.ts";
 import { mad, median, robustZ } from "../lib/metrics/stats.ts";
@@ -26,7 +26,8 @@ import {
   targetActualByBranch,
   undeliveredOrderAging,
 } from "../lib/metrics/dashboard-charts.ts";
-import { THRESHOLDS } from "../lib/config.ts";
+import { STAGES, THRESHOLDS } from "../lib/config.ts";
+import { branchDetailData } from "../lib/metrics/branch-detail.ts";
 
 const ds = normalize(JSON.parse(readFileSync("data/dealership_data.json", "utf8"))), L = ds.leads;
 const count = (s: string) => L.filter((l) => l.status === s).length;
@@ -62,6 +63,40 @@ describe("ground truth", () => {
       expect(h).toBeGreaterThan(43); expect(h).toBeLessThan(51);
     }
   });
+  it("builds branch detail metrics and tables from the selected branch scope", () => {
+    const selected = ds.branches.find((item) => item.name.startsWith("Lakeside"))!;
+    const selectedLeads = L.filter((lead) => lead.branchId === selected.id);
+    const detail = branchDetailData(ds, selected.id, EMPTY_FILTERS)!;
+    const closed = selectedLeads.filter((lead) => lead.status === "delivered" || lead.status === "lost");
+    const contacted = selectedLeads.filter((lead) => lead.reached.contacted !== null);
+    const testDrives = selectedLeads.filter((lead) => lead.reached.test_drive !== null);
+    const delayed = selectedLeads.filter((lead) => lead.delivery !== null && lead.delivery.delayReason !== null);
+    const openValue = selectedLeads.filter((lead) => lead.status !== "delivered" && lead.status !== "lost")
+      .reduce((sum, lead) => sum + lead.dealValue, 0);
+
+    expect(detail.leads.every((lead) => lead.branchId === selected.id)).toBe(true);
+    expect(detail.stats.contactRate).toBeCloseTo(contacted.length / selectedLeads.length);
+    expect(detail.stats.testDriveToOrder).toBeCloseTo(
+      testDrives.filter((lead) => lead.reached.order_placed !== null).length / testDrives.length,
+    );
+    expect(detail.stats.winRate).toBeCloseTo(
+      selectedLeads.filter((lead) => lead.status === "delivered").length / closed.length,
+    );
+    expect(detail.stats.delayRate).toBeCloseTo(delayed.length /
+      selectedLeads.filter((lead) => lead.delivery !== null).length);
+    expect(detail.stats.workload).toBeCloseTo(selectedLeads.length /
+      ds.reps.filter((rep) => rep.branchId === selected.id).length);
+    expect(detail.stats.firstResponseHours).toBeCloseTo(medianFirstResponse(selectedLeads)!);
+    expect(detail.pipeline.openValue).toBe(openValue);
+    expect(detail.funnelRows.map((row) => row.count)).toEqual(STAGES.map((stage) =>
+      selectedLeads.filter((lead) => lead.reached[stage] !== null).length));
+    expect(detail.lossRows.reduce((sum, row) => sum + row.count, 0)).toBe(
+      selectedLeads.filter((lead) => lead.status === "lost").length,
+    );
+    expect(detail.sourceRows.reduce((sum, row) => sum + row.volume, 0)).toBe(selectedLeads.length);
+    expect(detail.repRows.every((row) => row.leadCount > 0)).toBe(true);
+    expect(branchDetailData(ds, "missing-branch", EMPTY_FILTERS)).toBeNull();
+  });
   it("awaiting orders and delays", () => {
     const aw = awaitingOrders(L, ds.asOf);
     expect(aw.length).toBe(38);
@@ -70,6 +105,46 @@ describe("ground truth", () => {
     const d = delayStats(L);
     expect(d.avgDelayedDays!).toBeCloseTo(25, 0); expect(d.avgOnTimeDays!).toBeCloseTo(13, 0);
     expect(pct(delayStats(branch("Central")).delayRate)).toBe(26);
+  });
+  it("uses the latest status history event instead of a stale top-level status", () => {
+    const staleOrder = {
+      ...L[0]!,
+      status: "order_placed",
+      history: [
+        ...L[0]!.history,
+        { status: "lost", ts: ds.asOf, note: "Closed after follow-up" },
+      ],
+    };
+    const normalized = normalize({
+      ...JSON.parse(readFileSync("data/dealership_data.json", "utf8")),
+      leads: [staleOrder],
+    });
+
+    expect(normalized.leads[0]!.status).toBe("lost");
+    expect(awaitingOrders(normalized.leads, ds.asOf)).toHaveLength(0);
+  });
+  it("builds delivery tables and age buckets from the active scope", () => {
+    const section = deliverySectionData(ds, EMPTY_FILTERS);
+    expect(section.deliveredCount).toBe(delayStats(L).total);
+    expect(section.delayedCount).toBe(delayStats(L).delayed);
+    expect(section.averageDelayedDays).toBeCloseTo(delayStats(L).avgDelayedDays!);
+    expect(section.averageOnTimeDays).toBeCloseTo(delayStats(L).avgOnTimeDays!);
+    expect(section.awaitingCount).toBe(awaitingOrders(L, ds.asOf).length);
+    expect(section.ageBuckets.reduce((sum, bucket) => sum + bucket.count, 0)).toBe(section.awaitingCount);
+    expect(section.ageBuckets.reduce((sum, bucket) => sum + bucket.value, 0)).toBeCloseTo(section.awaitingValue);
+    expect(section.reasons.reduce((sum, row) => sum + row.count, 0)).toBe(section.delayedCount);
+    expect(section.branchCycles.reduce((sum, row) => sum + row.count, 0)).toBe(section.deliveredCount);
+    expect(section.closedLostCount).toBe(288);
+    expect(section.closedLostValue).toBe(L.filter((lead) => lead.status === "lost").reduce((sum, lead) => sum + lead.dealValue, 0));
+    expect(section.closedLostRows.length).toBe(288);
+    expect(section.reasons[0]!.count).toBeGreaterThanOrEqual(section.reasons.at(-1)!.count);
+    expect(section.branchCycles[0]!.averageDays).toBeGreaterThanOrEqual(section.branchCycles.at(-1)!.averageDays);
+    expect(section.awaitingRows.every((row, index, rows) =>
+      index === 0 || rows[index - 1]!.daysWaiting >= row.daysWaiting)).toBe(true);
+
+    const lakeside = deliverySectionData(ds, { ...EMPTY_FILTERS, branch: ds.branches[0]!.id });
+    expect(lakeside.branchCycles.every((row) => row.branchId === ds.branches[0]!.id)).toBe(true);
+    expect(lakeside.awaitingRows.every((row) => row.lead.branchId === ds.branches[0]!.id)).toBe(true);
   });
   it("data quality", () => {
     expect(lostWithoutEvent(L).length).toBe(14);
@@ -100,9 +175,10 @@ describe("edge cases", () => {
     const fixture = { ...ds, leads };
     const all = lastContactByRepresentative(fixture, EMPTY_FILTERS);
     expect(all.buckets.map((bucket) => bucket.count)).toEqual([1, 1, 1, 1, 1]);
-    expect(all.reps.reduce((sum, rep) => sum + Object.values(rep.counts).reduce((n, count) => n + count, 0), 0)).toBe(5);
+    expect(all.totalCount).toBe(5);
+    expect(all.reps.reduce((sum, rep) => sum + rep.totalCount, 0)).toBe(5);
     expect(all.branches.flatMap((item) => item.reps)
-      .reduce((sum, rep) => sum + Object.values(rep.counts).reduce((n, count) => n + count, 0), 0)).toBe(5);
+      .reduce((sum, rep) => sum + rep.totalCount, 0)).toBe(5);
 
     const delivered = lastContactByRepresentative(fixture, EMPTY_FILTERS, "delivered");
     expect(delivered.buckets.map((bucket) => bucket.count)).toEqual([1, 0, 1, 0, 1]);

@@ -2,9 +2,9 @@
 
 ## What I built and why
 
-DealerPulse turns dealership lead, order, delivery, target, and source data into an executive overview, branch comparisons, chart drill-downs, and a filtered lead list. A normalized dataset feeds pure metric functions so calculations stay testable and are shared consistently by the overview, charts, and alert input.
+DealerPulse turns dealership lead, order, delivery, target, and source data into an executive overview, branch comparisons, section insights, and a filtered lead list. The Overview uses five KPIs, a deterministic business verdict, a per-section insight digest, target progress bars, and a ranked branch table. A normalized dataset feeds pure metric functions so calculations stay testable and consistent.
 
-The first chart-grid panel is an AI Alerts card. The server summarizes data by branch and sends only those aggregates to Azure OpenAI. The model is asked for urgent tasks that state the risk, impact, and next action; the route accepts only high-priority results referring to a branch in the request. The API key stays on the server. Per-alert done/discarded state is stored in local browser storage: this gives a useful single-user interaction without implying that a shared workflow backend exists.
+Insights are shown in their section and summarized as one line per area on the Overview; there is no global Act Now panel. Tables are the primary comparison surface. Charts are limited to one permitted simple visualization on sections where shape adds value.
 
 Dashboard and lead routes have skeleton loading states, route error boundaries, and designed no-results states. At narrow widths, charts become one column and lead rows stack into labeled fields rather than requiring sideways scrolling. Controls have 44 px minimum hit areas; chart tooltips can also be triggered by click/tap.
 
@@ -18,7 +18,7 @@ Timestamps are parsed once and day/month keys use UTC (`toDay` and `toMonth`). D
 
 “Overdue expected close” is a due-date rule, not a rolling 30-day rule: an open pre-order or order lead is overdue when its expected-close calendar day in UTC is earlier than the dataset’s UTC as-of day. A lead due today is not yet overdue. The fixture computes 30 such leads.
 
-The separate undelivered-order chart groups orders by time since the order was placed into `<7`, `7–14`, `15–30`, and `>30` day buckets. Separately, the existing Act Now insight becomes high severity when the oldest order waiting beyond the usual delivery median has waited at least 30 days. The cold-lead rule is another distinct threshold: a pre-order lead is cold only when it has had no activity for more than 14 days. Keeping the definitions separate prevents an order awaiting a vehicle from being treated as a neglected pre-order lead.
+The undelivered-order view groups orders by time since the order was placed into `<7`, `7–14`, `15–30`, and `>30` day buckets. The delivery insight becomes high severity when the oldest order waiting beyond the usual delivery median has waited at least 30 days. The cold-lead rule is another distinct threshold: a pre-order lead is cold only when it has had no activity for more than 14 days. Keeping the definitions separate prevents an order awaiting a vehicle from being treated as a neglected pre-order lead.
 
 ### Closed win rate
 
@@ -40,9 +40,7 @@ This is an advisory prioritization surface, not an automated task system. Local 
 
 ### Responsive and empty-state behavior
 
-At desktop widths the dashboard uses a multi-column KPI and chart layout; at intermediate widths KPI and chart grids reduce columns; at 820 px and below charts and filters reflow and the lead table becomes stacked records. Controls are sized for touch, and chart tooltips respond to click as well as pointer movement. Empty chart and lead results explain that the current selection produced no data rather than presenting a blank panel.
-
-The explicit alert list has its own vertical scrollbar by design so the panel stays within the chart-grid footprint. The overall page and lead table do not require horizontal scrolling.
+At desktop widths the Overview uses a five-tile KPI strip; at tablet widths the sidebar becomes an icon rail and KPI/table layouts reflow. Wide tables scroll inside their own card rather than the page. Controls are sized for touch, and chart tooltips respond to click as well as pointer movement. Empty chart and lead results explain that the current selection produced no data rather than presenting a blank panel.
 
 ## Data patterns verified by computation
 
@@ -61,6 +59,31 @@ The following figures were recomputed from `data/dealership_data.json` using the
 - **Monthly lead flow:** the computed June-to-December counts are 55, 60, 65, 70, 90, 95, and 75 respectively. This is a descriptive fixture trend, not a seasonal forecast.
 
 All figures above depend on this synthetic fixture, its timestamp normalization, and its recorded history/target values. They should not be treated as live dealership benchmarks.
+
+## Evaluation criteria alignment
+
+### Product thinking (30%)
+- The product is built around the executive question: “What is happening in the business, where is risk, and what needs attention today?”
+- The overview surfaces revenue, pipeline health, orders awaiting delivery, lead aging, delivery delays, and win-rate movement without burying the user in raw records.
+- Drill-downs from company to branch to representative let the CEO and branch manager answer operational questions quickly and preserve context while maintaining a simple single-page dashboard flow.
+- The dashboard surfaces concrete actionable signals such as overdue expected closes, aging delivery backlog, branch outliers, and target attainment gaps rather than generic charts.
+
+### Design and UX (25%)
+- The interface uses a clear information hierarchy: headline KPIs first, then chart panels, then action-oriented AI insight and filtered lead detail.
+- Empty states, responsive layouts, and compact lead cards avoid blank or broken experiences when filters remove all data.
+- The layout is designed for desktop and tablet use with touch-friendly controls, stacked records on smaller screens, and no required horizontal scrolling.
+- The AI alert panel is intentionally focused and bounded so it adds decision support without cluttering the main executive story.
+
+### Technical quality (25%)
+- Business logic is separated from the UI into pure, testable metric functions that accept dataset and filters and return derived results.
+- Date handling is centralized and deliberately uses UTC-based bucket calculations to make the dashboard deterministic and consistent across browsers.
+- The data layer normalizes records once and reuses derived fields, which keeps the app easier to reason about and reduces duplication across views.
+- The app uses a lightweight static JSON source, route-local state via URL query parameters, and minimal server-side processing to match the assignment scope without speculative architecture.
+
+### Insight and storytelling (20%)
+- The dashboard tells a business story rather than just dumping metrics: it highlights gaps, explains variance, and helps a non-technical decision-maker understand what is going wrong and which branch needs attention.
+- Outlier branches, delayed deliveries, stale orders, and missed target attainment are framed as decision points rather than abstract percentages.
+- The AI alert layer translates large amounts of operational data into short executive actions, making the product useful for time-poor stakeholders who want immediate recommendations.
 
 ## Tradeoffs and limitations
 

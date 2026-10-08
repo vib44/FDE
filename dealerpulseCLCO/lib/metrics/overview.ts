@@ -6,6 +6,7 @@ import { medianDaysToDeliver } from "./delivery.ts";
 import { ratio } from "./stats.ts";
 import { filterLeads } from "./filters.ts";
 import { toMonth } from "../dates.ts";
+import { formatCurrency, formatPercent } from "../format.ts";
 
 type MetricId = OverviewKPI["id"];
 
@@ -192,7 +193,7 @@ function buildKPI(id: MetricId, ds: Dataset, filters: FilterState, candidates: L
   };
 }
 
-const percentage = (value: number) => `${(value * 100).toFixed(1)}%`;
+const percentage = formatPercent;
 
 /** Build the overview KPIs and executive narrative from the filtered metric scope. */
 export function overviewVM(ds: Dataset, filters: FilterState): OverviewVM {
@@ -225,7 +226,7 @@ export function overviewVM(ds: Dataset, filters: FilterState): OverviewVM {
     : `Closed win rate is ${percentage(winRateKPI.value)}.`;
   const pipelineSummary = pipelineKPI.value === null
     ? "There is no active pipeline in this view."
-    : `Active pipeline is ₹${Math.round(pipelineKPI.value).toLocaleString("en-IN")}.`;
+    : `Active pipeline is ${formatCurrency(pipelineKPI.value)}.`;
 
   return {
     kpis,

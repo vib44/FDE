@@ -1,0 +1,241 @@
+
+
+  .branch-health-section {
+    margin-top: 24px;
+  }
+
+  .branch-health-section .overview-section-heading {
+    align-items: center;
+    margin-bottom: 12px;
+  }
+
+  .branch-health-section .overview-section-heading h2 {
+    font-size: 20px;
+  }
+
+  .branch-health-table-wrap {
+    overflow-x: auto;
+  }
+
+  .branch-health-table {
+    border-collapse: collapse;
+    min-width: 620px;
+    text-align: left;
+    width: 100%;
+  }
+
+  .branch-health-table th,
+  .branch-health-table td {
+    border-bottom: 1px solid var(--border);
+    padding: 12px 14px;
+  }
+
+  .branch-health-table th {
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 600;
+  }
+
+  .branch-health-table td {
+    color: var(--text-primary);
+    font-size: 13px;
+  }
+
+  .branch-health-table tbody tr:last-child td {
+    border-bottom: 0;
+  }
+
+  .branch-health-table a {
+    background: transparent;
+    border: 0;
+    color: var(--text-primary);
+    text-decoration-color: var(--accent);
+    text-underline-offset: 3px;
+  }
+
+  .branch-status {
+    align-items: center;
+    display: inline-flex;
+    gap: 7px;
+    white-space: nowrap;
+  }
+
+  .branch-status .status-shape {
+    flex: 0 0 8px;
+  }
+
+  .branch-status.status-good {
+    color: var(--good);
+  }
+
+  .branch-status.status-risk {
+    color: var(--bad);
+  }
+
+  .branch-status.status-neutral {
+    color: var(--text-muted);
+  }
+
+  .section-page-header {
+    margin-bottom: 18px;
+  }
+
+  .section-page-header h1 {
+    font-size: 28px;
+    margin: 4px 0;
+  }
+
+  .section-question {
+    font-size: 15px;
+    margin: 0;
+  }
+
+  .section-verdict {
+    color: var(--text-primary);
+    font-size: 14px;
+    font-weight: 600;
+    margin: 8px 0 0;
+  }
+
+  .section-period {
+    font-size: 12px;
+    margin: 6px 0 0;
+  }
+
+  .section-insight-strip {
+    margin-bottom: 16px;
+  }
+
+  .section-insight-strip h2 {
+    font-size: 15px;
+    margin: 0 0 5px;
+  }
+
+  .section-insight-strip p {
+    color: var(--text-muted);
+    font-size: 12px;
+    margin: 0;
+  }
+
+  .section-insight-list {
+    display: grid;
+    gap: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 290px), 1fr));
+    list-style: none;
+    margin: 12px 0 0;
+    padding: 0;
+  }
+
+  .section-insight-list .insight-card {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding: 12px;
+  }
+
+  .section-insight-list .insight-link {
+    min-height: 36px;
+  }
+
+  .section-page .charts-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .section-page .chart-panel:first-child {
+    grid-column: 1 / -1;
+  }
+
+  .section-page .chart-panel:first-child .chart-canvas,
+  .section-page .chart-panel:first-child .chart-empty,
+  .section-page .chart-panel:first-child .chart-skeleton {
+    height: 350px;
+  }
+
+  .section-details {
+    margin-top: 18px;
+  }
+
+  .section-details summary {
+    color: var(--text-primary);
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    min-height: 24px;
+  }
+
+  .section-details p {
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.5;
+    margin: 12px 0 0;
+  }
+
+  .leads-table th,
+  .leads-table td {
+    border-color: var(--border);
+  }
+
+  .leads-table th {
+    color: var(--text-muted);
+  }
+
+  .leads-table td {
+    color: var(--text-primary);
+  }
+
+  .chart-empty,
+  .ai-alert-state:not(.ai-alert-error) {
+    background: var(--surface-raised);
+    border-color: var(--border);
+    color: var(--text-muted);
+  }
+
+  .chart-empty strong,
+  .empty-state-icon {
+    background: var(--accent-soft);
+    color: var(--accent);
+  }
+
+  .ai-alert-panel,
+  .ai-alert-item {
+    background: var(--surface-raised);
+    border-color: var(--border);
+  }
+
+  .ai-alert-item {
+    border-left-color: var(--bad);
+  }
+
+  .ai-alert-branch,
+  .chart-heading h3 {
+    color: var(--text-primary);
+  }
+
+  .ai-alert-task,
+  .ai-alert-heading p,
+  .ai-alert-feedback,
+  .ai-alert-state {
+    color: var(--text-muted);
+  }
+
+  .ai-alert-count {
+    background: color-mix(in srgb, var(--bad) 15%, var(--surface));
+    color: var(--bad);
+  }
+
+  .ai-alert-action,
+  .ai-alert-state button {
+    background: var(--bg);
+    border-color: var(--border);
+    color: var(--text-primary);
+  }
+
+  .chart-canvas {
+    color: var(--text-primary);
+  }
+
+  .chart-skeleton,
+  .skeleton-block {
+    animation: skeleton-pulse 1.4s ease-in-out infinite;
+    background: var(--surface-raised);
+    background-size: auto;
+  }

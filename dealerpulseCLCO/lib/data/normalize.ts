@@ -21,8 +21,12 @@ export function normalize(raw: any): Dataset {
   }
 
   const leads: Lead[] = raw.leads.map((l: any): Lead => {
-    const history: StatusEvent[] = (l.status_history ?? [])
-      .map((h: any) => ({ status: h.status, ts: Date.parse(h.timestamp), note: h.note ?? "" }))
+    const history: StatusEvent[] = (l.status_history ?? l.history ?? [])
+      .map((h: any) => ({
+        status: h.status,
+        ts: typeof h.ts === "number" ? h.ts : Date.parse(h.timestamp),
+        note: h.note ?? "",
+      }))
       .sort((a: StatusEvent, b: StatusEvent) => a.ts - b.ts);
     const reached = Object.fromEntries(STAGES.map((s) => [s, null])) as Record<Stage, number | null>;
     for (const h of history) {
@@ -31,15 +35,19 @@ export function normalize(raw: any): Dataset {
       }
     }
     const nonLost = history.filter((h) => h.status !== "lost");
+    const hasLostEvent = history.some((h) => h.status === "lost");
+    const latestStatus = l.status === "lost" && !hasLostEvent
+      ? l.status
+      : history.at(-1)?.status ?? l.status;
     return {
       id: l.id, customerName: l.customer_name, source: l.source, model: l.model_interested,
-      status: l.status, repId: l.assigned_to, repName: repById[l.assigned_to]?.name ?? l.assigned_to,
+      status: latestStatus, repId: l.assigned_to, repName: repById[l.assigned_to]?.name ?? l.assigned_to,
       branchId: l.branch_id, branchName: branchById[l.branch_id]?.name ?? l.branch_id,
       createdAt: Date.parse(l.created_at), lastActivityAt: Date.parse(l.last_activity_at),
       expectedCloseAt: l.expected_close_date ? Date.parse(l.expected_close_date) : null,
       dealValue: l.deal_value ?? 0, lostReason: l.lost_reason ?? null, history, reached,
       lostStage: nonLost.length ? nonLost[nonLost.length - 1]!.status : null,
-      hasLostEvent: history.some((h) => h.status === "lost"),
+      hasLostEvent,
       delivery: deliveries.get(l.id) ?? null,
       // phone intentionally not copied
     };

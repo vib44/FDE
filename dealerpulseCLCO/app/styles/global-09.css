@@ -1,0 +1,237 @@
+
+
+  .app-sidebar-caption {
+    border-color: var(--border);
+    color: var(--text-muted);
+  }
+
+  .app-workspace {
+    margin-left: 240px;
+  }
+
+  .app-topbar {
+    align-items: center;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: grid;
+    gap: 12px;
+    grid-template-columns: minmax(100px, 150px) minmax(0, 1fr) minmax(140px, auto);
+    min-height: 64px;
+    padding: 7px clamp(16px, 2.5vw, 36px);
+    position: sticky;
+    top: 0;
+    z-index: 4;
+  }
+
+  .app-breadcrumb {
+    align-items: center;
+    color: var(--text-muted);
+    display: flex;
+    font-size: 12px;
+    gap: 8px;
+    min-width: 0;
+    white-space: nowrap;
+  }
+
+  .app-breadcrumb a,
+  .app-breadcrumb [aria-current="page"] {
+    color: var(--text-primary);
+    text-decoration: none;
+  }
+
+  .app-breadcrumb a:hover {
+    color: var(--accent);
+  }
+
+  .app-data-asof {
+    color: var(--text-muted);
+    font-size: 11px;
+    line-height: 1.4;
+    margin: 0;
+    text-align: right;
+  }
+
+  .app-data-asof time {
+    color: var(--text-primary);
+    display: block;
+    font-variant-numeric: tabular-nums;
+  }
+
+  .app-data-asof.has-error {
+    color: var(--bad);
+  }
+
+  .app-filter-area {
+    display: none;
+  }
+
+  .app-topbar .filter-bar {
+    align-items: center;
+    background: transparent;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+    flex-wrap: nowrap;
+    gap: 6px;
+    min-width: 0;
+    padding: 0;
+    position: static;
+  }
+
+  .app-topbar .live-toggle {
+    display: none;
+  }
+
+  .app-topbar .filter-bar label:not(.live-toggle) {
+    flex: 1 1 96px;
+    min-width: 0;
+  }
+
+  .app-topbar .filter-bar label > span {
+    color: var(--text-muted);
+    font-size: 10px;
+    font-weight: 500;
+  }
+
+  .app-topbar .filter-bar select,
+  .app-topbar .filter-bar input[type="date"] {
+    background: var(--bg);
+    border-color: var(--border);
+    border-radius: 6px;
+    color: var(--text-primary);
+    font-size: 11px;
+    min-height: 38px;
+    padding: 5px 7px;
+    width: 100%;
+  }
+
+  .app-topbar .filter-bar .reset-button,
+  .app-topbar .filter-bar .new-leads {
+    background: var(--surface-raised);
+    border-color: var(--border);
+    color: var(--text-primary);
+    font-size: 11px;
+    min-height: 38px;
+    padding: 5px 8px;
+  }
+
+  .app-topbar .filter-bar .live-toggle {
+    color: var(--text-muted);
+    font-size: 10px;
+    margin-left: 0;
+    min-height: 38px;
+    white-space: nowrap;
+  }
+
+  .app-topbar .filter-chips {
+    border: 0;
+    flex: 0 1 auto;
+    gap: 4px;
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .app-topbar .filter-chips button {
+    background: var(--accent-soft);
+    border-color: var(--border);
+    color: var(--text-primary);
+    font-size: 10px;
+    min-height: 34px;
+    padding: 5px 8px;
+    white-space: nowrap;
+  }
+
+  .dashboard {
+    color: var(--text-primary);
+    margin: 0 auto;
+    max-width: 1440px;
+    padding: 28px clamp(20px, 3vw, 40px) 44px;
+  }
+
+  .app-workspace > .dashboard {
+    max-width: 1440px;
+  }
+
+  .dashboard h1,
+  .dashboard h2,
+  .dashboard h3,
+  .overview-section-heading h2,
+  .chart-heading h3,
+  .branch-pie-title {
+    color: var(--text-primary);
+  }
+
+  .dashboard p,
+  .chart-heading p,
+  .chart-period,
+  .eyebrow,
+  .card-label,
+  .scope-caption,
+  .comparison-caption,
+  .as-of {
+    color: var(--text-muted);
+  }
+
+  .chart-panel,
+  .kpi-card,
+  .executive-verdict,
+  .filter-bar,
+  .app-section-placeholder,
+  .branch-health-table-wrap,
+  .section-insight-strip,
+  .section-details,
+  .leads-table-wrap,
+  .leads-empty,
+  .route-error-card,
+  .skeleton-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: none;
+  }
+
+  .filter-bar {
+    color: var(--text-primary);
+  }
+
+  .filter-bar select,
+  .filter-bar input[type="date"],
+  .leads-filter-bar select,
+  .chart-status-filter select,
+  .representative-filters select {
+    background: var(--bg);
+    border-color: var(--border);
+    color: var(--text-primary);
+  }
+
+  .leads-filter-bar,
+  .representative-filters {
+    background: var(--surface);
+    border-color: var(--border);
+  }
+
+  .leads-filter-bar label span,
+  .representative-filters label span,
+  .representative-filters > p,
+  .scorecard-health-legend,
+  .scorecard-health-legend small,
+  .scorecard-health-key,
+  .leads-table th::before {
+    color: var(--text-muted);
+  }
+
+  .scorecard-health-legend output {
+    color: var(--text-primary);
+  }
+
+  .scorecard-health-legend input {
+    accent-color: var(--accent);
+  }
+
+  .health-dot.is-healthy {
+    background: var(--good);
+  }
+
+  .health-dot.is-unhealthy {
+    background: var(--bad);
+  }

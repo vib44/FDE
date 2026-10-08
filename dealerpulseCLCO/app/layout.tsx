@@ -1,9 +1,14 @@
+/// <reference types="next" />
+
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { Inter } from "next/font/google";
+import { AppShell } from "../components/app-shell.tsx";
 import { DatasetProvider } from "../components/dataset-provider.tsx";
-import { hashDataset } from "../lib/data/hash.ts";
 import { loadDataset } from "../lib/data/index.ts";
 import "./globals.css";
+
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter", display: "swap" });
 
 export const metadata: Metadata = {
   title: "DealerPulse",
@@ -12,12 +17,11 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   const dataset = loadDataset();
-  const hash = hashDataset(dataset);
   return (
     <html lang="en">
-      <body>
-        <DatasetProvider initialDataset={dataset} initialHash={hash}>
-          {children}
+      <body className={`${inter.variable} ${inter.className}`}>
+        <DatasetProvider initialDataset={dataset}>
+          <AppShell>{children}</AppShell>
         </DatasetProvider>
       </body>
     </html>

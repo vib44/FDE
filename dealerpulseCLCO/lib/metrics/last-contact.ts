@@ -11,30 +11,32 @@ export const LAST_CONTACT_BUCKETS = [
 
 export type LastContactBucketKey = (typeof LAST_CONTACT_BUCKETS)[number]["key"];
 
-export interface LastContactBucketPoint {
+interface LastContactBucketPoint {
   key: LastContactBucketKey;
   label: string;
   count: number;
 }
 
-export interface LastContactRepPoint {
+interface LastContactRepPoint {
   repId: string;
   repName: string;
   branchId: string;
   branchName: string;
   counts: Record<LastContactBucketKey, number>;
+  totalCount: number;
 }
 
-export interface LastContactBranchPoint {
+interface LastContactBranchPoint {
   branchId: string;
   branchName: string;
-  reps: { repId: string; repName: string; counts: Record<LastContactBucketKey, number> }[];
+  reps: { repId: string; repName: string; counts: Record<LastContactBucketKey, number>; totalCount: number }[];
 }
 
 export interface LastContactVM {
   buckets: LastContactBucketPoint[];
   reps: LastContactRepPoint[];
   branches: LastContactBranchPoint[];
+  totalCount: number;
 }
 
 function ageBucket(days: number): LastContactBucketKey | null {
@@ -79,7 +81,22 @@ export function lastContactByRepresentative(
     }
   }
 
-  const reps = [...repRows.values()];
+  const reps = [...repRows.values()].map((rep) => ({
+    ...rep,
+    totalCount: Object.values(rep.counts).reduce((sum, count) => sum + count, 0),
+  }));
+  const branches = dataset.branches.map((branch) => ({
+    branchId: branch.id,
+    branchName: branch.name,
+    reps: [...(branchReps.get(branch.id) ?? new Map<string, Record<LastContactBucketKey, number>>()).entries()]
+      .map(([repId, counts]) => ({
+        repId,
+        repName: dataset.repById[repId]?.name ?? repId,
+        counts,
+        totalCount: Object.values(counts).reduce((sum, count) => sum + count, 0),
+      }))
+      .sort((a, b) => b.totalCount - a.totalCount || a.repName.localeCompare(b.repName)),
+  }));
   return {
     buckets: LAST_CONTACT_BUCKETS.map(({ key, label }) => ({
       key,
@@ -87,19 +104,7 @@ export function lastContactByRepresentative(
       count: reps.reduce((sum, rep) => sum + rep.counts[key], 0),
     })),
     reps,
-    branches: dataset.branches.map((branch) => ({
-      branchId: branch.id,
-      branchName: branch.name,
-      reps: [...(branchReps.get(branch.id) ?? new Map<string, Record<LastContactBucketKey, number>>()).entries()]
-        .map(([repId, count]) => ({
-          repId,
-          repName: dataset.repById[repId]?.name ?? repId,
-          counts: count,
-        }))
-        .sort((a, b) =>
-          Object.values(b.counts).reduce((sum, count) => sum + count, 0) -
-            Object.values(a.counts).reduce((sum, count) => sum + count, 0) ||
-          a.repName.localeCompare(b.repName)),
-    })),
+    branches,
+    totalCount: reps.reduce((sum, rep) => sum + rep.totalCount, 0),
   };
 }
