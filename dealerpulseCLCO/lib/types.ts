@@ -88,6 +88,7 @@ export interface ScorecardPoint {
 }
 export interface BranchScorecardVM extends ChartViewModel<ScorecardPoint> {
   metrics: ScorecardMetric[];
+  summary: ScorecardPoint;
 }
 export interface FunnelPoint {
   stage: string;

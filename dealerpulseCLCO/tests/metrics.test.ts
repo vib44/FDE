@@ -9,11 +9,13 @@ import { filterLeads } from "../lib/metrics/filters.ts";
 import { mad, median, robustZ } from "../lib/metrics/stats.ts";
 import { EMPTY_FILTERS } from "../lib/types.ts";
 import { toDay, toMonth } from "../lib/dates.ts";
+import { periodLabel } from "../lib/period.ts";
 import { scopeSummary } from "../lib/metrics/summary.ts";
 import { overviewVM } from "../lib/metrics/overview.ts";
 import { actNowInsights } from "../lib/metrics/insights.ts";
 import { branchAlertData } from "../lib/metrics/branch-alert-data.ts";
 import { localPriorityAlerts } from "../lib/metrics/local-alerts.ts";
+import { lastContactByRepresentative } from "../lib/metrics/last-contact.ts";
 import {
   branchScorecard,
   conversionFunnel,
@@ -80,6 +82,32 @@ describe("ground truth", () => {
 });
 
 describe("edge cases", () => {
+  it("labels full and month-bounded reporting periods", () => {
+    expect(periodLabel(ds, { from: null, to: null })).toMatch(/^Full period: .+ – .+$/);
+    expect(periodLabel(ds, {
+      from: Date.UTC(2025, 0, 1),
+      to: Date.UTC(2025, 1, 0, 23, 59, 59, 999),
+    })).toBe("Period: Jan 2025");
+  });
+
+  it("groups last-contact activity into disjoint day buckets by latest lead status", () => {
+    const ages = [1, 4, 9, 13, 21, 0];
+    const leads = L.slice(0, ages.length).map((lead, index) => ({
+      ...lead,
+      status: index % 2 === 0 ? "delivered" : "new",
+      lastActivityAt: ds.asOf - ages[index]! * 86_400_000,
+    }));
+    const fixture = { ...ds, leads };
+    const all = lastContactByRepresentative(fixture, EMPTY_FILTERS);
+    expect(all.buckets.map((bucket) => bucket.count)).toEqual([1, 1, 1, 1, 1]);
+    expect(all.reps.reduce((sum, rep) => sum + Object.values(rep.counts).reduce((n, count) => n + count, 0), 0)).toBe(5);
+    expect(all.branches.flatMap((item) => item.reps)
+      .reduce((sum, rep) => sum + Object.values(rep.counts).reduce((n, count) => n + count, 0), 0)).toBe(5);
+
+    const delivered = lastContactByRepresentative(fixture, EMPTY_FILTERS, "delivered");
+    expect(delivered.buckets.map((bucket) => bucket.count)).toEqual([1, 0, 1, 0, 1]);
+  });
+
   it("builds chart view models with scoped branch and month data", () => {
     const target = targetActualByBranch(ds, EMPTY_FILTERS);
     expect(target.data).toHaveLength(ds.branches.length);

@@ -35,7 +35,15 @@ function readStatuses(): AlertStatuses {
   );
 }
 
-export function AiAlertsCard({ dataset, filters }: { dataset: Dataset; filters: FilterState }) {
+export function AiAlertsCard({
+  dataset,
+  filters,
+  period,
+}: {
+  dataset: Dataset;
+  filters: FilterState;
+  period: string;
+}) {
   const branches = useMemo(() => branchAlertData(dataset, filters), [dataset, filters]);
   const [alerts, setAlerts] = useState<AiAlert[]>([]);
   const [statuses, setStatuses] = useState<AlertStatuses>({});
@@ -119,8 +127,9 @@ export function AiAlertsCard({ dataset, filters }: { dataset: Dataset; filters: 
     <article className="chart-panel ai-alert-panel">
       <div className="ai-alert-heading">
         <div>
-          <h3>AI Alerts</h3>
+          <h3>Priority Alerts</h3>
           <p>High-priority branch risks and actions</p>
+          <small className="chart-period">{period}</small>
         </div>
         <span className="ai-alert-count">{activeAlerts.length}</span>
       </div>

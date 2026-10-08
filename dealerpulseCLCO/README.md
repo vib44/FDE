@@ -45,6 +45,8 @@ Marking an alert done or discarding it stores that action in the current browser
 
 - The dashboard offers date, branch, source, model, and time-basis filters.
 - Chart panels support branch or stage drill-down where applicable.
+- The “Last contacted customers” chart groups leads by days since `last_activity_at` (1–3, 4–8, 9–12, 13–20, and over 20 days) and filters by each lead’s latest status. Selecting a bucket opens the representative view in a new tab, with branch-by-representative pies and a large stacked bar comparison. Selecting a branch pie filters the representative chart to that branch. The `last_activity_at` field is the fixture’s proxy for last contact.
+- On an already branch-filtered dashboard, selecting a chart point opens the representative view in a new tab and leaves the current dashboard drill-down unchanged. The first data chart (branch orders vs target) opens with delivered leads selected; other charts open with all statuses.
 - The leads page shows matching records; its mobile layout stacks fields rather than requiring a horizontally scrolling table.
 - Route-level loading skeletons and error boundaries are provided for the dashboard and lead detail views.
 - Dates and month aggregation use UTC. See [DECISIONS.md](./DECISIONS.md) for metric definitions, verified fixture patterns, limitations, and next steps.

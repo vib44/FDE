@@ -551,6 +551,13 @@ h1 {
   margin-top: 30px;
 }
 
+.chart-instruction {
+  color: #536b7e;
+  font-size: 12px;
+  font-weight: 600;
+  margin: 18px 0 -18px;
+}
+
 .charts-grid {
   display: grid;
   gap: 16px;
@@ -565,6 +572,95 @@ h1 {
   min-width: 0;
   overflow: hidden;
   padding: 17px 18px 12px;
+}
+
+.chart-period {
+  color: #73869a;
+  display: block;
+  font-size: 11px;
+  line-height: 1.4;
+  margin-top: 6px;
+}
+
+.leads-filter-bar {
+  align-items: end;
+  background: #fff;
+  border: 1px solid #e1e7ed;
+  border-radius: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin: 18px 0;
+  padding: 14px;
+}
+
+.leads-filter-bar label {
+  display: grid;
+  flex: 1 1 150px;
+  gap: 5px;
+  min-width: 0;
+}
+
+.leads-filter-bar label span {
+  color: #627386;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.leads-filter-bar select {
+  min-width: 0;
+  width: 100%;
+}
+
+.scorecard-health-legend {
+  color: #536b7e;
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 11px;
+  gap: 6px 14px;
+  margin-top: 10px;
+}
+
+.scorecard-health-legend label {
+  font-weight: 700;
+}
+
+.scorecard-health-legend output {
+  color: #213a4f;
+  font-variant-numeric: tabular-nums;
+}
+
+.scorecard-health-legend input {
+  accent-color: #23845b;
+  height: 18px;
+  min-height: 0;
+  width: 120px;
+}
+
+.scorecard-health-key {
+  align-items: center;
+  display: inline-flex;
+  gap: 5px;
+}
+
+.scorecard-health-legend small {
+  color: #82909d;
+  flex-basis: 100%;
+}
+
+.health-dot {
+  border-radius: 999px;
+  display: inline-block;
+  height: 10px;
+  width: 10px;
+}
+
+.health-dot.is-healthy {
+  background: #23845b;
+}
+
+.health-dot.is-unhealthy {
+  background: #c45b50;
 }
 
 .ai-alert-panel {
@@ -769,6 +865,144 @@ h1 {
   font-size: 12px;
   line-height: 1.45;
   margin: 6px 0 0;
+}
+
+.chart-status-filter {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.chart-status-filter span,
+.representative-filters label span {
+  color: #536b7e;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.chart-status-filter select,
+.representative-filters select {
+  background: #fff;
+  border: 1px solid #d7e0e8;
+  border-radius: 6px;
+  color: #334c61;
+  min-height: 38px;
+  padding: 0 9px;
+}
+
+.representative-filters {
+  align-items: center;
+  background: #fff;
+  border: 1px solid #e1e7ed;
+  border-radius: 10px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px 20px;
+  justify-content: space-between;
+  margin-top: 22px;
+  padding: 13px 16px;
+}
+
+.representative-filters label {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.representative-filters > p {
+  color: #627386;
+  font-size: 12px;
+  margin: 0;
+}
+
+.representative-age-panel {
+  margin-top: 16px;
+}
+
+.representative-age-panel .chart-canvas,
+.representative-age-panel .chart-empty,
+.representative-age-panel .chart-skeleton {
+  height: 260px;
+}
+
+.branch-composition-section {
+  margin-top: 28px;
+}
+
+.representative-section-heading {
+  align-items: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.representative-section-heading h2 {
+  color: #213a4f;
+  font-size: 21px;
+  letter-spacing: -0.03em;
+  margin: 5px 0;
+}
+
+.representative-section-heading p:last-child {
+  color: #627386;
+  font-size: 12px;
+  margin: 0;
+}
+
+.branch-pies-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.branch-pie-panel {
+  padding: 12px 14px;
+}
+
+.branch-pie-panel.is-selected {
+  border-color: #4f91b2;
+  box-shadow: 0 0 0 2px rgb(79 145 178 / 15%);
+}
+
+.branch-pie-title {
+  background: none;
+  border: 0;
+  color: #213a4f;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  min-height: 40px;
+  padding: 3px 0;
+  text-align: left;
+}
+
+.branch-pie-panel .chart-canvas,
+.branch-pie-panel .chart-empty,
+.branch-pie-panel .chart-skeleton {
+  height: 230px;
+}
+
+.branch-pie-panel .chart-empty {
+  font-size: 11px;
+}
+
+.representative-graph-panel {
+  margin-top: 18px;
+  padding: 18px 20px;
+}
+
+.representative-graph-panel .chart-heading {
+  min-height: 64px;
+}
+
+.representative-graph-panel .chart-canvas,
+.representative-graph-panel .chart-empty,
+.representative-graph-panel .chart-skeleton {
+  height: 560px;
 }
 
 .chart-canvas,
@@ -1123,6 +1357,12 @@ h1 {
 
   .comparison-caption {
     text-align: left;
+  }
+
+  .representative-graph-panel .chart-canvas,
+  .representative-graph-panel .chart-empty,
+  .representative-graph-panel .chart-skeleton {
+    height: 460px;
   }
 
   .live-toggle {

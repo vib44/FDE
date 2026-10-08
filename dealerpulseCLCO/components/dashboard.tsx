@@ -10,6 +10,7 @@ import { overviewVM } from "../lib/metrics/overview.ts";
 import { actNowInsights } from "../lib/metrics/insights.ts";
 import { EMPTY_FILTERS } from "../lib/types.ts";
 import type { OverviewFormat, OverviewKPI, OverviewStatus } from "../lib/types.ts";
+import { periodLabel } from "../lib/period.ts";
 
 function dayStart(value: string | null): number | null {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
@@ -95,6 +96,7 @@ export default function Dashboard() {
   }), [searchParams]);
   const overview = useMemo(() => overviewVM(dataset, filters), [dataset, filters]);
   const insights = useMemo(() => actNowInsights(dataset, filters), [dataset, filters]);
+  const period = periodLabel(dataset, filters);
 
   function leadsHref(filterOverrides: Partial<typeof filters>): string {
     const params = new URLSearchParams(searchParams.toString());
@@ -114,11 +116,7 @@ export default function Dashboard() {
       <header className="dashboard-header">
         <div>
           <p className="eyebrow" style={{ fontSize: "1.25rem" }}>DEALERPULSE · PERFORMANCE OVERVIEW</p>
-          
-       {/*   <p className="as-of">Data as of {new Intl.DateTimeFormat("en-IN", {
-            day: "2-digit", month: "short", year: "numeric", timeZone: "UTC",
-          }).format(new Date(`${toDay(dataset.asOf)}T00:00:00.000Z`))}
-           · Showing {filters.timeBasis === "created" ? "by lead created date" : "by event date"}</p> */}
+          <p className="as-of">{period} · {filters.timeBasis === "created" ? "By lead created date" : "By event date"}</p>
         </div>
         <div className="data-status" aria-live="polite">
           {error ? "Dataset refresh failed" : "Dataset connected"}
@@ -167,6 +165,7 @@ export default function Dashboard() {
           <p>{overview.verdict.summary}</p>
         </article>
       <FilterBar />
+      <p className="chart-instruction">Click on the bar object or plotted points for rep level information</p>
       <DashboardCharts dataset={dataset} filters={filters} />
     </main>
   );

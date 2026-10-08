@@ -93,13 +93,19 @@ function branchDeliveryMetrics(ds: Dataset, f: FilterState, branchId: string) {
     .filter((lead) => f.timeBasis !== "event" || withinRange(lead.delivery!.deliveredAt, f));
   return {
     leadCount: rows.length,
+    closedCount: closed.length,
+    wonCount: closed.filter((lead) => lead.status === DELIVERED_STAGE).length,
     winRate: ratio(closed.filter((lead) => lead.status === DELIVERED_STAGE).length, closed.length),
+    deliveryCount: delivered.length,
+    onTimeCount: delivered.filter((lead) => lead.delivery?.delayReason === null).length,
     onTime: ratio(delivered.filter((lead) => lead.delivery?.delayReason === null).length, delivered.length),
   };
 }
 
 export function branchScorecard(ds: Dataset, f: FilterState): BranchScorecardVM {
   const targetRows = new Map(targetActualRows(ds, f, "orders").map((row) => [row.branchId, row]));
+  const volumeBaseline = Math.max(0, ...ds.branches.map((branch) =>
+    branchDeliveryMetrics(ds, { ...f, branch: null }, branch.id).leadCount));
   const metrics: BranchScorecardVM["metrics"] = [
     { key: "leadVolume", label: "Lead volume index" },
     { key: "winRate", label: "Closed win rate" },
@@ -118,10 +124,32 @@ export function branchScorecard(ds: Dataset, f: FilterState): BranchScorecardVM 
         values: [performance.leadCount, performance.winRate, attainment, performance.onTime],
       };
     });
-  const maxLeads = Math.max(0, ...points.map((point) => point.leadCount));
   for (const point of points) {
-    point.values[0] = maxLeads ? point.leadCount / maxLeads : null;
+    point.values[0] = volumeBaseline ? point.leadCount / volumeBaseline : null;
   }
+  const selectedMetrics = ds.branches
+    .filter((branch) => !f.branch || branch.id === f.branch)
+    .map((branch) => branchDeliveryMetrics(ds, f, branch.id));
+  const closedCount = selectedMetrics.reduce((sum, metric) => sum + metric.closedCount, 0);
+  const wonCount = selectedMetrics.reduce((sum, metric) => sum + metric.wonCount, 0);
+  const deliveryCount = selectedMetrics.reduce((sum, metric) => sum + metric.deliveryCount, 0);
+  const onTimeCount = selectedMetrics.reduce((sum, metric) => sum + metric.onTimeCount, 0);
+  const selectedTargets = [...targetRows.values()];
+  const totalTarget = selectedTargets.reduce((sum, row) => sum + row.target, 0);
+  const totalActual = selectedTargets.reduce((sum, row) => sum + row.actual, 0);
+  const summary: ScorecardPoint = {
+    branchId: f.branch ?? "all",
+    branchName: f.branch ? ds.branchById[f.branch]?.name ?? "Selected branch" : "All selected branches",
+    leadCount: points.reduce((sum, point) => sum + point.leadCount, 0),
+    values: [
+      points.length && volumeBaseline
+        ? points.reduce((sum, point) => sum + (point.values[0] ?? 0), 0) / points.length
+        : null,
+      ratio(wonCount, closedCount),
+      ratio(totalActual, totalTarget),
+      ratio(onTimeCount, deliveryCount),
+    ],
+  };
   const bestBranch = points.reduce<ScorecardPoint | null>((best, point) => {
     const value = point.values[1];
     const bestValue = best?.values[1];
@@ -135,6 +163,7 @@ export function branchScorecard(ds: Dataset, f: FilterState): BranchScorecardVM 
       : "No closed leads match these filters.",
     metrics,
     data: points,
+    summary,
   };
 }
 

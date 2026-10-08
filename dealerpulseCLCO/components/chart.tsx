@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import * as echarts from "echarts/core";
 import type { EChartsCoreOption, EChartsType, ECElementEvent } from "echarts/core";
-import { BarChart, FunnelChart, HeatmapChart, LineChart, ScatterChart } from "echarts/charts";
+import { BarChart, FunnelChart, HeatmapChart, LineChart, PieChart, ScatterChart } from "echarts/charts";
 import {
   AriaComponent,
   GridComponent,
@@ -18,6 +18,7 @@ echarts.use([
   FunnelChart,
   HeatmapChart,
   LineChart,
+  PieChart,
   ScatterChart,
   AriaComponent,
   GridComponent,
@@ -58,11 +59,33 @@ export function Chart({
 
     const instance = echarts.init(hostElement);
     chart.current = instance;
+    const setChartOption = (nextOption: EChartsCoreOption) => {
+      const tooltipOptions = Array.isArray(nextOption.tooltip)
+        ? nextOption.tooltip.map((tooltip) => ({
+          ...tooltip,
+          appendTo: "body",
+          appendToBody: true,
+          confine: false,
+          z: 2147483647,
+          extraCssText: "z-index: 2147483647 !important;",
+        }))
+        : nextOption.tooltip
+          ? {
+            ...nextOption.tooltip,
+            appendTo: "body",
+            appendToBody: true,
+            confine: false,
+            z: 2147483647,
+            extraCssText: "z-index: 2147483647 !important;",
+          }
+          : undefined;
+      instance.setOption({ ...nextOption, ...(tooltipOptions ? { tooltip: tooltipOptions } : {}) }, true);
+    };
     const observer = new ResizeObserver(() => instance.resize());
     observer.observe(hostElement);
     const handleClick = (event: ECElementEvent) => clickHandler.current?.(event);
     instance.on("click", handleClick);
-    instance.setOption(option, true);
+    setChartOption(option);
 
     return () => {
       observer.disconnect();
@@ -73,7 +96,28 @@ export function Chart({
   }, []);
 
   useEffect(() => {
-    chart.current?.setOption(option, true);
+    const instance = chart.current;
+    if (!instance) return;
+    const tooltipOptions = Array.isArray(option.tooltip)
+      ? option.tooltip.map((tooltip) => ({
+        ...tooltip,
+        appendTo: "body",
+        appendToBody: true,
+        confine: false,
+        z: 2147483647,
+        extraCssText: "z-index: 2147483647 !important;",
+      }))
+      : option.tooltip
+        ? {
+          ...option.tooltip,
+          appendTo: "body",
+          appendToBody: true,
+          confine: false,
+          z: 2147483647,
+          extraCssText: "z-index: 2147483647 !important;",
+        }
+        : undefined;
+    instance.setOption({ ...option, ...(tooltipOptions ? { tooltip: tooltipOptions } : {}) }, true);
   }, [option]);
 
   if (loading) {
