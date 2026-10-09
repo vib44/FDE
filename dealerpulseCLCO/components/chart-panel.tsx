@@ -9,6 +9,8 @@ export function ChartPanel({
   label,
   period,
   option,
+  chartHeight,
+  fillHeight = false,
   empty,
   emptyMessage,
   control,
@@ -19,20 +21,35 @@ export function ChartPanel({
   label: string;
   period: string;
   option: EChartsCoreOption;
+  chartHeight?: number;
+  fillHeight?: boolean;
   empty: boolean;
   emptyMessage: string;
   control?: ReactNode;
   onClick?: (event: ECElementEvent) => void;
 }) {
   return (
-    <Card className="chart-panel">
+    <Card className={fillHeight ? "chart-panel chart-panel-fill" : "chart-panel"}>
       <div className="chart-heading">
         <h3>{title}</h3>
-        <p>{takeaway}</p>
-        <small className="chart-period">{period}</small>
+        {fillHeight ? (
+          <p>{takeaway} <span className="chart-period">· {period}</span></p>
+        ) : (
+          <>
+            <p>{takeaway}</p>
+            <small className="chart-period">{period}</small>
+          </>
+        )}
         {control}
       </div>
-      <Chart option={option} ariaLabel={label} empty={empty} emptyMessage={emptyMessage} onClick={onClick} />
+      <Chart
+        option={option}
+        ariaLabel={label}
+        height={chartHeight}
+        empty={empty}
+        emptyMessage={emptyMessage}
+        onClick={onClick}
+      />
     </Card>
   );
 }

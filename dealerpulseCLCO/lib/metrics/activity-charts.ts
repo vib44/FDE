@@ -17,10 +17,14 @@ export function leadFlowByMonth(ds: Dataset, filters: FilterState): MonthlyLeadF
     .map(([month, count]) => ({ month, count }));
   const peak = data.reduce<typeof data[number] | null>((best, row) =>
     best === null || row.count > best.count ? row : best, null);
+  const peakMonth = peak
+    ? new Intl.DateTimeFormat("en", { month: "short", year: "numeric", timeZone: "UTC" })
+      .format(new Date(`${peak.month}-01T00:00:00.000Z`))
+    : null;
   return {
-    title: "How has lead flow changed month by month?",
+    title: "Monthly leads received",
     takeaway: peak
-      ? `${peak.month} brought the most leads (${peak.count}) in the selected period.`
+      ? `${peakMonth} brought the most leads (${peak.count}) in the selected period.`
       : "No lead creation activity matches these filters.",
     data,
   };

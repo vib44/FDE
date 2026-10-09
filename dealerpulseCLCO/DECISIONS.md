@@ -4,7 +4,11 @@
 
 DealerPulse turns dealership lead, order, delivery, target, and source data into an executive overview, branch comparisons, section insights, and a filtered lead list. The Overview uses five KPIs, a deterministic business verdict, a per-section insight digest, target progress bars, and a ranked branch table. A normalized dataset feeds pure metric functions so calculations stay testable and consistent.
 
-Insights are shown in their section and summarized as one line per area on the Overview; there is no global Act Now panel. Tables are the primary comparison surface. Charts are limited to one permitted simple visualization on sections where shape adds value.
+Priority alerts and strategic insights are gathered at the bottom of the Overview ("What to do first", Key insight, Watch, What's working), not on the section pages; per-page alerts are a next step. Tables are the primary comparison surface. Charts are limited to one permitted simple visualization on sections where shape adds value.
+
+### Alert impact, effort and ranking
+
+Each alert's impact is the recoverable rupees: for a client, deal value times the chance to buy, which comes from the win rate of the deal's stage and source together (falling back to stage alone when the source has too little history); for a branch or rep rate gap, the extra conversions at the peer median times the win-rate gain from one step times the average delivered deal value. Effort (quick = days, medium = weeks, long = months) is an assumption per action type, set in `lib/config.ts`, not a measurement. One shared function ranks alerts by impact rounded to a configurable step (default ₹10 L), breaking ties by quicker effort and grouping equal impact and effort as "Equal priority"; each lead counts in at most one alert. Totals no single action can recover (lead-volume ceiling, target gap, branches with no unordered deals, leads lost before first contact) are strategic insights: they are shown but never ranked and carry no recoverable amount.
 
 Dashboard and lead routes have skeleton loading states, route error boundaries, and designed no-results states. At narrow widths, charts become one column and lead rows stack into labeled fields rather than requiring sideways scrolling. Controls have 44 px minimum hit areas; chart tooltips can also be triggered by click/tap.
 

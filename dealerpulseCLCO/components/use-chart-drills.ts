@@ -1,17 +1,10 @@
 "use client";
 
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import type { LastContactBucketKey } from "../lib/metrics/last-contact.ts";
 
 export function useChartDrills() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-
-  function drillToBranch(branchId: string) {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("branch", branchId);
-    router.push(`/branches?${params.toString()}#branch-${encodeURIComponent(branchId)}`);
-  }
 
   function drillToStage(stage: string) {
     const params = new URLSearchParams(searchParams.toString());
@@ -46,5 +39,5 @@ export function useChartDrills() {
     window.open(`/representatives?${params.toString()}`, "_blank", "noopener,noreferrer");
   }
 
-  return { drillToBranch, drillToStage, drillToLeads, openRepresentativeView };
+  return { drillToStage, drillToLeads, openRepresentativeView };
 }

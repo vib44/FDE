@@ -5,8 +5,12 @@ const currencyFormatter = new Intl.NumberFormat("en-IN", {
   maximumFractionDigits: 0,
 });
 
-export function formatNumber(value: number): string {
-  return numberFormatter.format(value);
+export function formatNumber(value: number, fractionDigits = 0): string {
+  if (fractionDigits === 0) return numberFormatter.format(value);
+  return new Intl.NumberFormat("en-IN", {
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
+  }).format(value);
 }
 
 export function formatCurrency(value: number): string {
@@ -23,4 +27,10 @@ export function formatCurrency(value: number): string {
 
 export function formatPercent(value: number, fractionDigits = 1): string {
   return `${(value * 100).toFixed(fractionDigits)}%`;
+}
+
+export function formatSourceName(value: string): string {
+  const words = value.replaceAll("_", " ").trim().toLowerCase();
+  if (words === "walk in") return "Walk-in";
+  return words.replace(/^./, (first) => first.toUpperCase());
 }

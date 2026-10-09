@@ -1,11 +1,14 @@
-import { Suspense } from "react";
-import { RepresentativesPage } from "../../components/representatives-page.tsx";
-import { LeadsSkeleton } from "../../components/page-skeletons.tsx";
+import { redirect } from "next/navigation";
 
-export default function TeamPage() {
-  return (
-    <Suspense fallback={<LeadsSkeleton />}>
-      <RepresentativesPage />
-    </Suspense>
-  );
+export default async function TeamPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(await searchParams)) {
+    if (typeof value === "string") params.set(key, value);
+    else if (value) value.forEach((item) => params.append(key, item));
+  }
+  redirect(`/funnel${params.size ? `?${params.toString()}` : ""}`);
 }

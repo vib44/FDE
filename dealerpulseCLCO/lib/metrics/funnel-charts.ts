@@ -19,7 +19,7 @@ export function conversionFunnel(ds: Dataset, filters: FilterState): FunnelVM {
   const first = data[0]?.count ?? 0;
   const last = data[data.length - 1]?.count ?? 0;
   return {
-    title: "Where does the lead funnel lose the most momentum?",
+    title: "Leads reaching each funnel stage",
     takeaway: first
       ? `${Math.round((1 - last / first) * 100)}% of leads reaching new have not yet reached delivery.`
       : "No funnel activity matches these filters.",
@@ -62,6 +62,7 @@ export function sourceQuality(ds: Dataset, filters: FilterState): SourceQualityV
     return {
       source,
       leads: leads.length,
+      closedLeads: closed.length,
       winRate: ratio(won.length, closed.length),
       medianResponseHours: median(leads.map(firstResponseHours)
         .filter((hours): hours is number => hours !== null)),

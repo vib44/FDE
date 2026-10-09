@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toDay } from "../lib/dates.ts";
+import { formatSourceName } from "../lib/format.ts";
 import { useDataset } from "./dataset-provider.tsx";
 
 const DAY_MS = 86_400_000;
@@ -87,7 +88,7 @@ export function FilterBar() {
         dataset.months.includes(range) ? range : `${params.get("from") ?? "…"} – ${params.get("to") ?? "…"}`,
     },
     branch && { key: "branch", label: dataset.branches.find((item) => item.id === branch)?.name ?? branch },
-    source && { key: "source", label: dataset.sources.includes(source) ? source.replaceAll("_", " ") : source },
+    source && { key: "source", label: dataset.sources.includes(source) ? formatSourceName(source) : source },
     model && { key: "model", label: model },
     basis === "event" && { key: "basis", label: "By event date" },
   ].filter((chip): chip is { key: string; label: string } => Boolean(chip));
@@ -132,7 +133,7 @@ export function FilterBar() {
             <span>Source</span>
             <select aria-label="Source" value={source} onChange={(event) => updateParam("source", event.target.value)}>
               <option value="">All sources</option>
-              {dataset.sources.map((item) => <option key={item} value={item}>{item.replaceAll("_", " ")}</option>)}
+              {dataset.sources.map((item) => <option key={item} value={item}>{formatSourceName(item)}</option>)}
             </select>
           </label>
           <label>

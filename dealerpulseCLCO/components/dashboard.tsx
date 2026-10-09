@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Check, CircleX, TriangleAlert } from "lucide-react";
 import { EMPTY_FILTERS } from "../lib/types.ts";
 import type { OverviewKPI, OverviewStatus } from "../lib/types.ts";
 import { toDay } from "../lib/dates.ts";
@@ -11,9 +12,13 @@ import { formatCurrency, formatNumber, formatPercent } from "../lib/format.ts";
 import { overviewVM } from "../lib/metrics/overview.ts";
 import { actNowInsights } from "../lib/metrics/insights.ts";
 import { branchHealthRows } from "../lib/metrics/branch-health.ts";
-import { targetActualByBranch } from "../lib/metrics/dashboard-charts.ts";
+import { overdueOpen } from "../lib/metrics/delivery.ts";
+import { filterLeads } from "../lib/metrics/filters.ts";
+import { healthKeyNumbers, healthStatus, kpiSublines, type HealthArea } from "../lib/metrics/overview-summary.ts";
+import { overviewInsights } from "../lib/insights/index.ts";
 import { useDataset } from "./dataset-provider.tsx";
-import { Card, CardHeader, Grid, PageContainer, PageHeader, PremiumTable } from "./shared-ui.tsx";
+import { OverviewInsightBlocks } from "./overview-insights.tsx";
+import { Card, Grid, PageContainer, PageHeader, PremiumTable } from "./shared-ui.tsx";
 
 function dayStart(value: string | null): number | null {
   if (!value || !/^\d{4}-\d{2}-\d{2}$/.test(value)) return null;
@@ -57,13 +62,14 @@ const statusLabels: Record<OverviewStatus, string> = {
   neutral: "No comparison",
 };
 
-const digestSections = [
-  { label: "Targets", href: "/targets", matches: (id: string) => id === "branches-below-target" },
-  { label: "Funnel", href: "/funnel", matches: (id: string) => id.startsWith("conversion-") || id.startsWith("source-quality-") },
-  { label: "Delivery", href: "/delivery", matches: (id: string) => id.includes("order") || id.includes("delivery") },
-  { label: "Branches", href: "/branches", matches: (id: string) => id.includes("branch") },
-  { label: "Team", href: "/team", matches: (id: string) => id.includes("cold") },
-] as const;
+const healthSections = [
+  { label: "Targets & Revenue", area: "targets", href: "/targets", matches: (id: string) => id === "branches-below-target" },
+  { label: "Funnel", area: "funnel", href: "/funnel#lead-sources", matches: (id: string) =>
+    id.startsWith("conversion-") || id.startsWith("source-quality-") },
+  { label: "Delivery", area: "delivery", href: "/delivery", matches: (id: string) => id === "orders-beyond-median-delivery" },
+  { label: "Deals in progress", area: "deals", href: "/deals", matches: (id: string) => id === "cold-preorder-leads" },
+  { label: "Team", area: "team", href: "/team", matches: (id: string) => id === "cold-preorder-leads" },
+] as const satisfies readonly { label: string; area: HealthArea; href: string; matches: (id: string) => boolean }[];
 
 export default function Dashboard() {
   const { dataset } = useDataset();
@@ -73,6 +79,7 @@ export default function Dashboard() {
     from: dayStart(searchParams.get("from")),
     to: dayEnd(searchParams.get("to")),
     branch: searchParams.get("branch"),
+    rep: searchParams.get("rep"),
     source: searchParams.get("source"),
     model: searchParams.get("model"),
     timeBasis: searchParams.get("basis") === "event" ? "event" as const : "created" as const,
@@ -80,14 +87,24 @@ export default function Dashboard() {
   const overview = useMemo(() => overviewVM(dataset, filters), [dataset, filters]);
   const insights = useMemo(() => actNowInsights(dataset, filters), [dataset, filters]);
   const branchRows = useMemo(() => branchHealthRows(dataset, filters), [dataset, filters]);
+  const overviewBlocks = useMemo(() => overviewInsights(dataset, filters), [dataset, filters]);
+  const healthNumbers = useMemo(() => healthKeyNumbers(dataset, filters), [dataset, filters]);
+  const overdueLeadCount = useMemo(
+    () => overdueOpen(filterLeads(dataset, filters), dataset.asOf).length,
+    [dataset, filters],
+  );
   const rankedBranchRows = useMemo(
     () => branchRows.map((row, index) => ({ ...row, rank: index + 1 })),
     [branchRows],
   );
-  const orderTargets = useMemo(() => targetActualByBranch(dataset, filters), [dataset, filters]);
   const period = periodLabel(dataset, filters);
-  const primaryInsight = insights[0];
-  const lowestAttainment = branchRows.find((row) => row.revenuePct !== null);
+  const weakestWinRate = branchRows.reduce<(typeof branchRows)[number] | null>((weakest, row) =>
+    row.winRate !== null && (weakest === null || row.winRate < weakest.winRate!)
+      ? row
+      : weakest, null);
+  const revenueKPI = overview.kpis.find((kpi) => kpi.id === "revenue");
+  const deliveriesKPI = overview.kpis.find((kpi) => kpi.id === "deliveries");
+  const attainmentKPI = overview.kpis.find((kpi) => kpi.id === "attainment");
   const verdictTitle = overview.verdict.status === "risk"
     ? "Business performance is below target"
     : overview.verdict.status === "watch"
@@ -95,45 +112,74 @@ export default function Dashboard() {
       : overview.verdict.status === "good"
         ? "Business performance is on track"
         : "Business performance snapshot";
-  const verdictSummary = [
-    lowestAttainment
-      ? `${lowestAttainment.branchName} has the lowest revenue attainment at ${formatPercent(lowestAttainment.revenuePct!)}.`
-      : null,
-    primaryInsight ? `Priority: ${primaryInsight.headline}${/[.!?]$/.test(primaryInsight.headline) ? "" : "."}` : null,
-    overview.kpis.find((kpi) => kpi.id === "winRate")?.value == null
-      ? "No leads have closed in this view yet."
-      : `Closed win rate is ${formatPercent(overview.kpis.find((kpi) => kpi.id === "winRate")!.value!)}.`,
-  ].filter(Boolean).join(" ");
-  const attainmentKPI = overview.kpis.find((kpi) => kpi.id === "attainment");
-  const labels = {
-    revenue: "Revenue",
-    deliveries: "Deliveries",
-    winRate: "Closed win rate",
-    pipelineValue: "Active pipeline",
-    attainment: "Target attainment",
-  } as const;
-  const cards = overview.kpis
-    .filter((kpi) => kpi.id in labels)
-    .map((kpi) => ({ ...kpi, displayLabel: labels[kpi.id as keyof typeof labels] }));
+  const weakestBranch = weakestWinRate && weakestWinRate.winRate !== null
+    ? `The weakest branch by win rate is ${weakestWinRate.branchName} at ${formatPercent(weakestWinRate.winRate)}.`
+    : "No branch has a closed win rate in this view.";
+  const verdictSummary = `${formatCurrency(revenueKPI?.value ?? 0)} in revenue was delivered across ${formatNumber(deliveriesKPI?.value ?? 0)} cars. ${weakestBranch}`;
+  const sublines = kpiSublines(dataset, filters);
+  const cards = [
+    {
+      id: "revenue",
+      label: "Revenue delivered",
+      tooltip: "Deal value from cars delivered in the selected view.",
+      subline: attainmentKPI?.value === null || attainmentKPI?.value === undefined
+        ? "Target unavailable"
+        : `${formatPercent(attainmentKPI.value)} of target`,
+    },
+    {
+      id: "orders",
+      label: "Orders booked",
+      tooltip: "Number of leads that reached the order-placed stage in the selected view.",
+      subline: sublines.orders,
+    },
+    {
+      id: "winRate",
+      label: "Closed win rate",
+      tooltip: "Delivered leads divided by all delivered and lost leads in the selected view.",
+      subline: sublines.winRate,
+    },
+    {
+      id: "pipelineValue",
+      label: "Unordered deal value",
+      tooltip: "Deal value of open leads before an order is placed.",
+      subline: sublines.pipelineValue,
+    },
+    {
+      id: "awaitingDeliveryValue",
+      label: "Ordered deal value",
+      tooltip: "Deal value of orders placed but not yet delivered.",
+      subline: sublines.awaitingDeliveryValue,
+    },
+  ].map((card) => {
+    const kpi = overview.kpis.find((item) => item.id === card.id);
+    if (!kpi) throw new Error(`Missing overview KPI: ${card.id}`);
+    return {
+      ...kpi,
+      displayLabel: card.label,
+      tooltip: card.tooltip,
+      subline: card.subline,
+    };
+  });
 
   function pageHref(path: string): string {
     const query = searchParams.toString();
-    return query ? `${path}?${query}` : path;
+    if (!query) return path;
+    const hashIndex = path.indexOf("#");
+    const base = hashIndex < 0 ? path : path.slice(0, hashIndex);
+    const hash = hashIndex < 0 ? "" : path.slice(hashIndex);
+    return `${base}${base.includes("?") ? "&" : "?"}${query}${hash}`;
   }
 
   function branchHref(branchId: string): string {
     const params = new URLSearchParams(searchParams.toString());
     params.set("branch", branchId);
-    return `/branches?${params.toString()}#branch-${encodeURIComponent(branchId)}`;
+    return `/targets?${params.toString()}`;
   }
 
   return (
-    <PageContainer className="overview-dashboard">
-      <PageHeader eyebrow="Performance overview" title="Business overview" className="dashboard-header">
-        <p className="as-of">{period} · {filters.timeBasis === "created" ? "By lead created date" : "By event date"}</p>
-      </PageHeader>
-
-      <section className="overview-top-row" aria-label="Business status and key results">
+   <PageContainer className="overview-dashboard">
+           <section className="overview-top-row" aria-label="Business status and key results">
+         <p className="as-of">{period} · {filters.timeBasis === "created" ? "By lead created date" : "By event date"}</p>
         <Card className={`executive-verdict status-${overview.verdict.status}`} aria-live="polite">
           <div className="verdict-heading">
             <span className="verdict-indicator" aria-hidden="true" />
@@ -141,17 +187,11 @@ export default function Dashboard() {
             <span className="status-label">{statusLabels[overview.verdict.status]}</span>
           </div>
           <h2>{verdictTitle}</h2>
-          <p>{verdictSummary || overview.verdict.summary}</p>
-          {overview.verdict.title === "Targets may need recalibration" &&
-            attainmentKPI?.value !== null && attainmentKPI?.value !== undefined && (
-            <p className="verdict-note">
-              Review whether targets need recalibration; current delivery revenue attainment is {formatPercent(attainmentKPI.value)}.
-            </p>
-          )}
+          <p>{verdictSummary}</p>
         </Card>
         <Grid className="overview-kpis" role="group" aria-label="Key results">
           {cards.map((card) => (
-            <Card key={card.id} className={`kpi-card status-${card.status}`}>
+            <Card key={card.id} className={`kpi-card status-${card.status}`} title={card.tooltip}>
               <div className="kpi-topline">
                 <span className="card-label">{card.displayLabel}</span>
                 <span className="kpi-status" aria-label={statusLabels[card.status]} title={statusLabels[card.status]}>
@@ -159,69 +199,38 @@ export default function Dashboard() {
                 </span>
               </div>
               <strong className="kpi-value">{formatValue(card.value, card.format)}</strong>
+              {card.subline && <p className="kpi-subline">{card.subline}</p>}
               {card.delta !== null && <p className="kpi-delta">{formatDelta(card)}</p>}
             </Card>
           ))}
         </Grid>
       </section>
 
-      <Card className="overview-digest" aria-label="Section priorities">
-        <CardHeader title="At a glance" takeaway="The top current priority in each area." />
-        <ul>
-          {digestSections.map((section) => {
-            const insight = insights.find((item) => section.matches(item.id));
-            return (
-              <li key={section.label}>
-                <span>{section.label}</span>
-                <Link href={pageHref(section.href)}>
-                  {insight
-                    ? `${insight.headline}${/[.!?]$/.test(insight.headline) ? "" : "."} ${insight.evidence}`
-                    : "No priority action flagged for these filters."}
-                  <span className="digest-arrow" aria-hidden="true">→</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </Card>
-
-      <Card className="target-progress-card">
-        <CardHeader
-          title="Orders booked against target"
-          takeaway={orderTargets.takeaway}
-        />
-        {orderTargets.data.length ? (
-          <ul className="target-progress-list">
-            {orderTargets.data
-              .slice()
-              .sort((a, b) => (a.attainment ?? -1) - (b.attainment ?? -1))
-              .map((row) => {
-                const percent = row.attainment === null ? null : row.attainment * 100;
-                return (
-                  <li key={row.branchId}>
-                    <Link href={branchHref(row.branchId)} title={`View ${row.branchName} branch`}>
-                      <span className="target-progress-name">{row.branchName}</span>
-                      <span className="target-progress-track" aria-hidden="true">
-                        <span
-                          className={`target-progress-fill${percent !== null && percent < 50 ? " is-low" : ""}`}
-                          style={{ width: `${Math.min(100, Math.max(0, percent ?? 0))}%` }}
-                        />
-                      </span>
-                      <span className="target-progress-value">
-                        {row.attainment === null ? "No target" : formatPercent(row.attainment)}
-                      </span>
-                      <span className="target-progress-context">
-                        {formatNumber(row.actual)} / {formatNumber(row.target)} orders
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-          </ul>
-        ) : (
-          <p className="premium-table-empty">No order targets match the selected filters.</p>
-        )}
-      </Card>
+      <Grid className="overview-health-check" role="group" aria-label="Section health check">
+        {healthSections.map((section) => {
+          const insight = insights.find((item) => section.matches(item.id));
+          const status = healthStatus(section.area, insight?.severity, overdueLeadCount);
+          const StatusIcon = status === "good" ? Check : status === "watch" ? TriangleAlert : CircleX;
+          const statusLabel = status === "good" ? "Good" : status === "watch" ? "Watch" : "Act";
+          return (
+            <Card key={section.label} className={`health-check-card health-${status}`}>
+              <div className="health-check-heading">
+                <span className="health-check-status" aria-label={statusLabel}>
+                  <StatusIcon aria-hidden="true" />
+                  {statusLabel}
+                </span>
+                <span className="card-label">{section.label}</span>
+              </div>
+              <div className="health-check-insight">
+                <strong className="health-key-number">{healthNumbers[section.area]}</strong>
+              </div>
+              <Link className="health-check-link" href={pageHref(section.href)}>
+                View<span aria-hidden="true"> →</span>
+              </Link>
+            </Card>
+          );
+        })}
+      </Grid>
 
       <PremiumTable
         title="Branch health"
@@ -229,7 +238,7 @@ export default function Dashboard() {
         rows={rankedBranchRows}
         rowKey={(row) => row.branchId}
         rowHref={(row) => branchHref(row.branchId)}
-        highlightRow={(row) => row.branchId === branchRows[0]?.branchId}
+        highlightRow={(row) => row.branchId === weakestWinRate?.branchId}
         emptyMessage="No branch results match the current filters."
         emptyAction={{ label: "Reset filters", href: "/" }}
         columns={[
@@ -237,11 +246,24 @@ export default function Dashboard() {
           { label: "Branch", render: (row) => row.branchName },
           { label: "Revenue", align: "right", render: (row) => formatCurrency(row.revenue) },
           {
-            label: "Attainment",
+            label: "Attainment (delivered revenue)",
             align: "right",
+            tooltip: "Delivered deal value divided by target revenue for the selected branch-months.",
             render: (row) => row.revenuePct === null ? "—" : formatPercent(row.revenuePct),
           },
-          { label: "Win rate", align: "right", render: (row) => row.winRate === null ? "—" : formatPercent(row.winRate) },
+          {
+            label: "Win rate",
+            align: "right",
+            render: (row) => row.winRate === null ? "—" : (
+              <span className={`overview-win-rate${row.branchId === weakestWinRate?.branchId ? " is-weakest" : ""}`}>
+                <span className="overview-win-rate-bar" aria-hidden="true">
+                  <span style={{ width: `${row.winRate * 100}%` }} />
+                </span>
+                {formatPercent(row.winRate)}
+                {row.branchId === weakestWinRate?.branchId && <small>Weakest</small>}
+              </span>
+            ),
+          },
           {
             label: "Status",
             render: (row) => (
@@ -252,6 +274,9 @@ export default function Dashboard() {
           },
         ]}
       />
+
+      <OverviewInsightBlocks overview={overviewBlocks} query={searchParams.toString()} />
     </PageContainer>
+    
   );
 }

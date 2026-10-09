@@ -3,7 +3,14 @@ import { readFileSync } from "node:fs";
 import { normalize } from "../lib/data/normalize.ts";
 import { closedWinRate, funnel, lostWithoutEvent, stageConversion } from "../lib/metrics/funnel.ts";
 import { medianFirstResponse } from "../lib/metrics/response.ts";
-import { awaitingOrders, coldLeads, delayStats, deliverySectionData, overdueOpen } from "../lib/metrics/delivery.ts";
+import {
+  awaitingOrders,
+  branchDeliveryScorecardTotals,
+  coldLeads,
+  delayStats,
+  deliverySectionData,
+  overdueOpen,
+} from "../lib/metrics/delivery.ts";
 import { attainment } from "../lib/metrics/targets.ts";
 import { filterLeads } from "../lib/metrics/filters.ts";
 import { mad, median, robustZ } from "../lib/metrics/stats.ts";
@@ -16,6 +23,7 @@ import { actNowInsights } from "../lib/metrics/insights.ts";
 import { branchAlertData } from "../lib/metrics/branch-alert-data.ts";
 import { localPriorityAlerts } from "../lib/metrics/local-alerts.ts";
 import { lastContactByRepresentative } from "../lib/metrics/last-contact.ts";
+import { filterOpenLeads, OPEN_LEAD_AGE_BUCKETS, openLeadBuckets, openLeadsByBranch } from "../lib/metrics/open-leads.ts";
 import {
   branchScorecard,
   conversionFunnel,
@@ -26,8 +34,10 @@ import {
   targetActualByBranch,
   undeliveredOrderAging,
 } from "../lib/metrics/dashboard-charts.ts";
-import { STAGES, THRESHOLDS } from "../lib/config.ts";
+import { LOST, ORDER_STAGE, STAGES, THRESHOLDS } from "../lib/config.ts";
+import type { BranchDeliveryScorecardRow } from "../lib/metrics/delivery.ts";
 import { branchDetailData } from "../lib/metrics/branch-detail.ts";
+import { leadValueCeiling } from "../lib/metrics/lead-value-ceiling.ts";
 
 const ds = normalize(JSON.parse(readFileSync("data/dealership_data.json", "utf8"))), L = ds.leads;
 const count = (s: string) => L.filter((l) => l.status === s).length;
@@ -45,6 +55,31 @@ describe("ground truth", () => {
   it("targets", () => {
     expect(ds.targets.reduce((s, t) => s + t.units, 0)).toBe(1426);
     expect(ds.targets.reduce((s, t) => s + t.revenue, 0)).toBe(3_130_141_531);
+  });
+  it("compares lead-volume value ceiling with revenue and unit targets overall and by branch", () => {
+    const result = leadValueCeiling(ds, EMPTY_FILTERS);
+    expect(result.leadCount).toBe(L.length);
+    expect(result.leadValue).toBe(L.reduce((sum, lead) => sum + lead.dealValue, 0));
+    expect(result.targetUnits).toBe(ds.targets.reduce((sum, target) => sum + target.units, 0));
+    expect(result.targetRevenue).toBe(ds.targets.reduce((sum, target) => sum + target.revenue, 0));
+    expect(result.ceilingPct).toBeCloseTo(result.leadValue / result.targetRevenue);
+    expect(result.branches).toHaveLength(ds.branches.length);
+    expect(result.branches).toEqual([...result.branches].sort((a, b) =>
+      (a.ceilingPct ?? Number.POSITIVE_INFINITY) - (b.ceilingPct ?? Number.POSITIVE_INFINITY) ||
+      a.branchName.localeCompare(b.branchName)));
+    expect(result.branches.reduce((sum, row) => sum + row.leadCount, 0)).toBe(result.leadCount);
+    expect(result.branches.reduce((sum, row) => sum + row.leadValue, 0)).toBe(result.leadValue);
+    expect(Math.round((result.ceilingPct ?? 0) * 1000) / 10).toBe(39.5);
+    expect(result.branches.map((row) => Math.round((row.ceilingPct ?? 0) * 1000) / 10))
+      .toEqual([33.9, 35.7, 40.5, 43.4, 44.5]);
+
+    const selectedBranchId = ds.branches[0]!.id;
+    const scoped = leadValueCeiling(ds, { ...EMPTY_FILTERS, branch: selectedBranchId });
+    expect(scoped.branches).toHaveLength(1);
+    expect(scoped.branches[0]!.branchId).toBe(selectedBranchId);
+    expect(scoped.leadCount).toBe(L.filter((lead) => lead.branchId === selectedBranchId).length);
+    expect(scoped.leadValue).toBe(L.filter((lead) => lead.branchId === selectedBranchId)
+      .reduce((sum, lead) => sum + lead.dealValue, 0));
   });
   it("closed win rate by branch and source", () => {
     const lake = branch("Lakeside");
@@ -106,6 +141,69 @@ describe("ground truth", () => {
     expect(d.avgDelayedDays!).toBeCloseTo(25, 0); expect(d.avgOnTimeDays!).toBeCloseTo(13, 0);
     expect(pct(delayStats(branch("Central")).delayRate)).toBe(26);
   });
+  it("counts only current order_placed leads without a delivery as awaiting", () => {
+    const base = L[0]!;
+    const orderAwaitingDelivery = {
+      ...base,
+      id: "awaiting-delivery",
+      status: ORDER_STAGE,
+      delivery: null,
+      reached: { ...base.reached, [ORDER_STAGE]: ds.asOf - 86_400_000 },
+    };
+    const lostAfterOrdering = {
+      ...orderAwaitingDelivery,
+      id: "lost-after-order",
+      status: LOST,
+      history: [
+        ...base.history,
+        { status: ORDER_STAGE, ts: ds.asOf - 86_400_000, note: "" },
+        { status: LOST, ts: ds.asOf, note: "" },
+      ],
+    };
+    const deliveredLead = {
+      ...orderAwaitingDelivery,
+      id: "already-delivered",
+      status: "delivered",
+      delivery: L.find((lead) => lead.delivery)?.delivery ?? null,
+    };
+
+    expect(awaitingOrders([orderAwaitingDelivery, lostAfterOrdering, deliveredLead], ds.asOf)
+      .map(({ lead }) => lead.id)).toEqual(["awaiting-delivery"]);
+  });
+  it("computes scorecard totals with a delivery-weighted overall average", () => {
+    const rows: BranchDeliveryScorecardRow[] = [
+      {
+        branchId: "north",
+        branchName: "North",
+        managerName: "North manager",
+        deliveries: 2,
+        averageDays: 10,
+        medianDays: 9,
+        revenueDelivered: 3_000_000,
+        ordersAwaiting: 2,
+        valueAwaiting: 1_200_000,
+      },
+      {
+        branchId: "south",
+        branchName: "South",
+        managerName: "South manager",
+        deliveries: 1,
+        averageDays: 7,
+        medianDays: 7,
+        revenueDelivered: 2_000_000,
+        ordersAwaiting: 1,
+        valueAwaiting: 800_000,
+      },
+    ];
+
+    expect(branchDeliveryScorecardTotals(rows)).toEqual({
+      deliveries: 3,
+      averageDays: 9,
+      revenueDelivered: 5_000_000,
+      ordersAwaiting: 3,
+      valueAwaiting: 2_000_000,
+    });
+  });
   it("uses the latest status history event instead of a stale top-level status", () => {
     const staleOrder = {
       ...L[0]!,
@@ -130,10 +228,29 @@ describe("ground truth", () => {
     expect(section.averageDelayedDays).toBeCloseTo(delayStats(L).avgDelayedDays!);
     expect(section.averageOnTimeDays).toBeCloseTo(delayStats(L).avgOnTimeDays!);
     expect(section.awaitingCount).toBe(awaitingOrders(L, ds.asOf).length);
+    const deliveries = L.filter((lead) => lead.delivery);
+    const fastestDays = Math.min(...deliveries.map((lead) => lead.delivery!.daysToDeliver));
+    const highestValue = Math.max(...deliveries.map((lead) => lead.dealValue));
+    expect(section.medianDeliveryDays).toBe(median(deliveries.map((lead) => lead.delivery!.daysToDeliver)));
+    expect(section.fastestDeliveryDays).toBe(fastestDays);
+    expect(section.fastestDeliveries).toHaveLength(
+      deliveries.filter((lead) => lead.delivery!.daysToDeliver === fastestDays).length,
+    );
+    expect(section.highestDeliveryValue).toBe(highestValue);
+    expect(section.highestValueDeliveries).toHaveLength(deliveries.filter((lead) => lead.dealValue === highestValue).length);
+    expect(section.mostDeliveredModel?.count).toBeGreaterThan(0);
+    expect(section.awaitingIdleCount).toBe(
+      awaitingOrders(L, ds.asOf).filter((row) => row.idleDays >= THRESHOLDS.staleOrderDays).length,
+    );
     expect(section.ageBuckets.reduce((sum, bucket) => sum + bucket.count, 0)).toBe(section.awaitingCount);
     expect(section.ageBuckets.reduce((sum, bucket) => sum + bucket.value, 0)).toBeCloseTo(section.awaitingValue);
     expect(section.reasons.reduce((sum, row) => sum + row.count, 0)).toBe(section.delayedCount);
     expect(section.branchCycles.reduce((sum, row) => sum + row.count, 0)).toBe(section.deliveredCount);
+    expect(section.branchSpeedRows.length).toBeLessThanOrEqual(5);
+    expect(section.branchSpeedRows.every((row, index, rows) =>
+      index === 0 || rows[index - 1]!.medianDays <= row.medianDays)).toBe(true);
+    expect(section.branchSpeedRows.every((row) =>
+      row.belowMinimumSample === (row.count < THRESHOLDS.minDeliveriesForBranchRank))).toBe(true);
     expect(section.closedLostCount).toBe(288);
     expect(section.closedLostValue).toBe(L.filter((lead) => lead.status === "lost").reduce((sum, lead) => sum + lead.dealValue, 0));
     expect(section.closedLostRows.length).toBe(288);
@@ -145,6 +262,27 @@ describe("ground truth", () => {
     const lakeside = deliverySectionData(ds, { ...EMPTY_FILTERS, branch: ds.branches[0]!.id });
     expect(lakeside.branchCycles.every((row) => row.branchId === ds.branches[0]!.id)).toBe(true);
     expect(lakeside.awaitingRows.every((row) => row.lead.branchId === ds.branches[0]!.id)).toBe(true);
+
+    const firstBranch = ds.branches[0]!;
+    const secondBranch = ds.branches[1]!;
+    const tieFixture = {
+      ...ds,
+      leads: [firstBranch, secondBranch].map((branchItem, index) => ({
+        ...L.find((lead) => lead.branchId === branchItem.id)!,
+        branchId: branchItem.id,
+        branchName: branchItem.name,
+        status: "delivered",
+        delivery: {
+          leadId: `tie-${index}`,
+          orderAt: ds.asOf - 20 * 86_400_000,
+          deliveredAt: ds.asOf,
+          daysToDeliver: 10,
+          delayReason: index === 0 ? null : "Parts delay",
+        },
+      })),
+    };
+    expect(deliverySectionData(tieFixture, EMPTY_FILTERS).branchSpeedRows.map((row) => row.branchId))
+      .toEqual([firstBranch.id, secondBranch.id]);
   });
   it("data quality", () => {
     expect(lostWithoutEvent(L).length).toBe(14);
@@ -157,6 +295,41 @@ describe("ground truth", () => {
 });
 
 describe("edge cases", () => {
+  it("filters real open leads by activity age and groups cumulative deal value by last status", () => {
+    expect(filterOpenLeads(ds, EMPTY_FILTERS).length).toBeGreaterThan(0);
+    const ages = [0, 2, 7, 23, 1, 4];
+    const leads = L.slice(0, ages.length).map((lead, index) => ({
+      ...lead,
+      status: ["new", "order_placed", "contacted", "negotiation", "delivered", "lost"][index]!,
+      lastActivityAt: ds.asOf - ages[index]! * 86_400_000,
+      dealValue: (index + 1) * 100,
+    }));
+    const fixture = { ...ds, leads };
+    const openLeads = filterOpenLeads(fixture, EMPTY_FILTERS);
+    const allAges = OPEN_LEAD_AGE_BUCKETS.map((bucket) => bucket.key);
+    const buckets = openLeadBuckets(openLeads, ds.asOf, allAges, null);
+
+    expect(openLeads.map((lead) => lead.status)).toEqual(["new", "order_placed", "contacted", "negotiation"]);
+    expect(buckets.map((bucket) => [bucket.ageBucketKey, bucket.lastStatus, bucket.count, bucket.cumulativeDealValue]))
+      .toEqual([
+        ["today", "new", 1, 100],
+        ["1-3", "order_placed", 1, 200],
+        ["4-8", "contacted", 1, 300],
+        ["over-20", "negotiation", 1, 400],
+      ]);
+    expect(openLeadBuckets(openLeads, ds.asOf, ["1-3", "4-8"], "contacted"))
+      .toEqual([{ ageBucketKey: "4-8", ageBucketLabel: "4–8 days", lastStatus: "contacted", count: 1, cumulativeDealValue: 300 }]);
+
+    const branchLeads = openLeads.map((lead, index) => ({
+      ...lead,
+      branchId: index < 2 ? "branch-a" : "branch-b",
+    }));
+    expect(openLeadsByBranch(branchLeads, ds.asOf, allAges, null)).toEqual([
+      { branchId: "branch-a", count: 2, cumulativeDealValue: 300, lastStatuses: ["new", "order_placed"] },
+      { branchId: "branch-b", count: 2, cumulativeDealValue: 700, lastStatuses: ["contacted", "negotiation"] },
+    ]);
+  });
+
   it("labels full and month-bounded reporting periods", () => {
     expect(periodLabel(ds, { from: null, to: null })).toMatch(/^Full period: .+ – .+$/);
     expect(periodLabel(ds, {
@@ -234,8 +407,14 @@ describe("edge cases", () => {
     expect(value("revenue")).toBe(388_760_000);
     expect(value("deliveries")).toBe(160);
     expect(value("orders")).toBe(198);
+    expect(value("pipelineValue")).toBe(L
+      .filter((lead) => ["new", "contacted", "test_drive", "negotiation"].includes(lead.status))
+      .reduce((sum, lead) => sum + lead.dealValue, 0));
+    expect(value("awaitingDeliveryValue")).toBe(L
+      .filter((lead) => lead.status === "order_placed" && lead.delivery === null)
+      .reduce((sum, lead) => sum + lead.dealValue, 0));
     expect(value("winRate")).toBeCloseTo(160 / (160 + 288));
-    expect(kpis).toHaveLength(7);
+    expect(kpis).toHaveLength(8);
     expect(kpis.every((kpi) => kpi.trend.length === 6)).toBe(true);
     expect(verdict.title).not.toBe("");
     expect(verdict.summary).not.toBe("");

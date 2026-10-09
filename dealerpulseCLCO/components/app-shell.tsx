@@ -4,13 +4,12 @@ import { Suspense, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import {
-  Building2,
   Filter,
+  Handshake,
   LayoutDashboard,
   Search,
   Target,
   Truck,
-  UsersRound,
 } from "lucide-react";
 import { FilterBar } from "./filter-bar.tsx";
 import { useDataset } from "./dataset-provider.tsx";
@@ -20,8 +19,7 @@ const navigation = [
   { label: "Targets & Revenue", href: "/targets", icon: Target },
   { label: "Funnel", href: "/funnel", icon: Filter },
   { label: "Delivery", href: "/delivery", icon: Truck },
-  { label: "Branches", href: "/branches", icon: Building2 },
-  { label: "Team", href: "/team", icon: UsersRound },
+  { label: "Deals in progress", href: "/deals", icon: Handshake },
 ] as const;
 
 const sectionNames = new Map<string, string>([
@@ -30,9 +28,8 @@ const sectionNames = new Map<string, string>([
   ["/sales", "Targets & Revenue"],
   ["/funnel", "Funnel"],
   ["/delivery", "Delivery"],
-  ["/branches", "Branches"],
-  ["/team", "Team"],
-  ["/representatives", "Team"],
+  ["/deals", "Deals in progress"],
+  ["/branches", "Deals in progress"],
   ["/leads", "Lead Explorer"],
 ]);
 
@@ -40,7 +37,7 @@ function NavigationLinks() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const sharedParams = new URLSearchParams();
-  for (const key of ["from", "to", "range", "branch", "source", "model", "basis"]) {
+  for (const key of ["from", "to", "range", "branch", "rep", "source", "model", "basis"]) {
     const value = searchParams.get(key);
     if (value) sharedParams.set(key, value);
   }
@@ -52,8 +49,7 @@ function NavigationLinks() {
         const active = item.href === "/"
           ? pathname === "/"
           : pathname === item.href || pathname.startsWith(`${item.href}/`) ||
-            (item.href === "/targets" && pathname === "/sales") ||
-            (item.href === "/team" && pathname === "/representatives");
+            (item.href === "/targets" && pathname === "/sales");
         const href = query ? `${item.href}?${query}` : item.href;
         return (
           <Link
@@ -118,7 +114,7 @@ function LeadExplorerLink() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const sharedParams = new URLSearchParams();
-  for (const key of ["from", "to", "range", "branch", "source", "model", "basis"]) {
+  for (const key of ["from", "to", "range", "branch", "rep", "source", "model", "basis"]) {
     const value = searchParams.get(key);
     if (value) sharedParams.set(key, value);
   }

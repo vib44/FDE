@@ -11,16 +11,17 @@ import { formatCurrency, formatPercent } from "../format.ts";
 type MetricId = OverviewKPI["id"];
 
 const isOpen = (lead: Lead) =>
-  (PRE_ORDER_STAGES as readonly string[]).includes(lead.status) || lead.status === ORDER_STAGE;
+  (PRE_ORDER_STAGES as readonly string[]).includes(lead.status);
 
 function metricTimestamp(id: MetricId, lead: Lead, filters: FilterState): number | null {
   const alwaysEventBased = id === "revenue" || id === "deliveries" || id === "orders" ||
-    id === "deliveryDays" || id === "attainment";
+    id === "awaitingDeliveryValue" || id === "deliveryDays" || id === "attainment";
   return alwaysEventBased || filters.timeBasis === "event" ? eventTimestamp(id, lead) : lead.createdAt;
 }
 
 function eventTimestamp(id: MetricId, lead: Lead): number | null {
   if (id === "orders") return lead.reached[ORDER_STAGE];
+  if (id === "awaitingDeliveryValue") return lead.reached[ORDER_STAGE];
   if (id === "revenue" || id === "deliveries" || id === "deliveryDays" || id === "attainment")
     return lead.delivery?.deliveredAt ?? lead.reached[DELIVERED_STAGE];
   if (id === "winRate") {
@@ -66,6 +67,9 @@ function metricValue(
       return closedWinRate(leads.filter((lead) => lead.status === DELIVERED_STAGE || lead.status === LOST));
     case "pipelineValue":
       return leads.filter(isOpen).reduce((sum, lead) => sum + lead.dealValue, 0);
+    case "awaitingDeliveryValue":
+      return leads.filter((lead) => lead.status === ORDER_STAGE && lead.delivery === null)
+        .reduce((sum, lead) => sum + lead.dealValue, 0);
     case "deliveryDays":
       return medianDaysToDeliver(leads.filter((lead) => lead.delivery !== null));
   }
@@ -79,7 +83,7 @@ function metricStatus(id: MetricId, value: number | null, delta: number | null):
     return "good";
   }
   if (id === "pipelineValue" || delta === null || delta === 0) return "neutral";
-  const improving = id === "deliveryDays" ? delta < 0 : delta > 0;
+  const improving = id === "deliveryDays" || id === "awaitingDeliveryValue" ? delta < 0 : delta > 0;
   return improving ? "good" : "watch";
 }
 
@@ -89,6 +93,7 @@ const formats: Record<MetricId, OverviewFormat> = {
   orders: "number",
   winRate: "percent",
   pipelineValue: "currency",
+  awaitingDeliveryValue: "currency",
   deliveryDays: "days",
   attainment: "percent",
 };
@@ -98,7 +103,8 @@ const labels: Record<MetricId, string> = {
   deliveries: "Deliveries",
   orders: "Orders booked",
   winRate: "Closed win rate",
-  pipelineValue: "Active pipeline",
+  pipelineValue: "Unordered deal value",
+  awaitingDeliveryValue: "Ordered deal value",
   deliveryDays: "Median days to deliver",
   attainment: "Revenue target attainment",
 };
@@ -108,7 +114,8 @@ const notes: Record<MetricId, string> = {
   deliveries: "Delivered leads, filtered by delivery date",
   orders: "Leads that reached order placed",
   winRate: "Delivered ÷ (delivered + lost)",
-  pipelineValue: "Deal value in open pre-order and order stages",
+  pipelineValue: "Deal value in open pre-order stages, before an order is placed",
+  awaitingDeliveryValue: "Deal value in orders placed but not yet delivered",
   deliveryDays: "Median days to deliver in this view",
   attainment: "Delivered revenue ÷ target revenue",
 };
@@ -198,7 +205,10 @@ const percentage = formatPercent;
 /** Build the overview KPIs and executive narrative from the filtered metric scope. */
 export function overviewVM(ds: Dataset, filters: FilterState): OverviewVM {
   const candidates = filterLeads(ds, { ...filters, from: null, to: null });
-  const ids: MetricId[] = ["revenue", "deliveries", "orders", "winRate", "pipelineValue", "deliveryDays", "attainment"];
+  const ids: MetricId[] = [
+    "revenue", "deliveries", "orders", "winRate", "pipelineValue",
+    "awaitingDeliveryValue", "deliveryDays", "attainment",
+  ];
   const kpis = ids.map((id) => buildKPI(id, ds, filters, candidates));
   const attainmentKPI = kpis.find((kpi) => kpi.id === "attainment")!;
   const winRateKPI = kpis.find((kpi) => kpi.id === "winRate")!;
@@ -225,8 +235,8 @@ export function overviewVM(ds: Dataset, filters: FilterState): OverviewVM {
     ? "No leads have closed in this view yet."
     : `Closed win rate is ${percentage(winRateKPI.value)}.`;
   const pipelineSummary = pipelineKPI.value === null
-    ? "There is no active pipeline in this view."
-    : `Active pipeline is ${formatCurrency(pipelineKPI.value)}.`;
+    ? "There is no unordered deal value in this view."
+    : `Unordered deal value is ${formatCurrency(pipelineKPI.value)}.`;
 
   return {
     kpis,

@@ -44,7 +44,7 @@ export interface Insight {
 export type OverviewStatus = "good" | "watch" | "risk" | "neutral";
 export type OverviewFormat = "currency" | "number" | "percent" | "days";
 export interface OverviewKPI {
-  id: "revenue" | "deliveries" | "orders" | "winRate" | "pipelineValue" | "deliveryDays" | "attainment";
+  id: "revenue" | "deliveries" | "orders" | "winRate" | "pipelineValue" | "awaitingDeliveryValue" | "deliveryDays" | "attainment";
   label: string;
   value: number | null;
   previousValue: number | null;
@@ -119,6 +119,7 @@ export type DelayParetoVM = ChartViewModel<DelayReasonPoint>;
 interface SourceQualityPoint {
   source: string;
   leads: number;
+  closedLeads: number;
   winRate: number | null;
   medianResponseHours: number | null;
   revenue: number;

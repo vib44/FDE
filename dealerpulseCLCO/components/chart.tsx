@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 import * as echarts from "echarts/core";
 import type { EChartsCoreOption, EChartsType, ECElementEvent } from "echarts/core";
-import { BarChart, FunnelChart, LineChart } from "echarts/charts";
+import { BarChart, LineChart } from "echarts/charts";
 import {
   AriaComponent,
   GridComponent,
@@ -20,7 +20,6 @@ const reducedMotion = typeof window !== "undefined" &&
 
 echarts.use([
   BarChart,
-  FunnelChart,
   LineChart,
   AriaComponent,
   GridComponent,
@@ -33,6 +32,7 @@ echarts.use([
 interface ChartProps {
   option: EChartsCoreOption;
   ariaLabel: string;
+  height?: number;
   empty?: boolean;
   emptyMessage?: string;
   loading?: boolean;
@@ -71,6 +71,7 @@ function chartOptionWithTheme(option: EChartsCoreOption): EChartsCoreOption {
 export function Chart({
   option,
   ariaLabel,
+  height,
   empty = false,
   emptyMessage = "No records match the current view. Try adjusting the dashboard filters.",
   loading = false,
@@ -115,11 +116,11 @@ export function Chart({
   }, [option, tokens]);
 
   if (loading || !tokens) {
-    return <div className="chart-skeleton" aria-hidden="true" />;
+    return <div className="chart-skeleton" style={height ? { height } : undefined} aria-hidden="true" />;
   }
   if (empty) {
     return (
-      <div className="chart-empty" role="status">
+      <div className="chart-empty" style={height ? { height } : undefined} role="status">
         <span className="empty-state-icon" aria-hidden="true">∅</span>
         <strong>No chart data</strong>
         <p>{emptyMessage}</p>
@@ -130,6 +131,7 @@ export function Chart({
     <div
       className={`chart-canvas${onClick ? " is-interactive" : ""}`}
       ref={host}
+      style={height ? { height } : undefined}
       role="img"
       aria-label={ariaLabel}
     />

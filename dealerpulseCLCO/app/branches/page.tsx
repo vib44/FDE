@@ -1,11 +1,15 @@
-import { Suspense } from "react";
-import { BranchesOverview } from "../../components/branches-overview.tsx";
-import { DashboardSkeleton } from "../../components/page-skeletons.tsx";
+import { redirect } from "next/navigation";
 
-export default function BranchesPage() {
-  return (
-    <Suspense fallback={<DashboardSkeleton />}>
-      <BranchesOverview />
-    </Suspense>
-  );
+export default async function BranchesPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const params = await searchParams;
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (typeof value === "string") query.set(key, value);
+    else if (value) value.forEach((item) => query.append(key, item));
+  }
+  redirect(`/deals${query.size ? `?${query.toString()}` : ""}`);
 }

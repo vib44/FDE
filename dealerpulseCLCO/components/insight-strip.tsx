@@ -5,7 +5,7 @@ export function InsightStrip({
   insights,
   query,
   emptyMessage,
-  title = "What needs attention",
+  title = "Priority alerts",
 }: {
   insights: ActNowInsight[];
   query: string;
