@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Check, ChevronDown, ChevronRight, Lightbulb, TriangleAlert } from "lucide-react";
 import { EFFORT_LEVELS, INSIGHT_TEXT, OVERVIEW_INSIGHTS } from "../lib/config.ts";
+import { buildHref } from "../lib/navigation.ts";
 import { formatCurrency, formatNumber, formatPercent, formatSourceName } from "../lib/format.ts";
 import { fillTemplate } from "../lib/insights/template.ts";
 import { itemCopy } from "../lib/insights/present.ts";
@@ -23,18 +24,17 @@ function rowValue(item: RankedItem) {
 }
 
 function leadsHref(query: string, alerts: Alert[]) {
-  const params = new URLSearchParams(query);
-  params.delete("stage");
-  params.delete("status");
-  params.set("leadIds", [...new Set(alerts.flatMap((alert) => alert.leadIds))].join(","));
+  const targetParams: Record<string, string> = {
+    leadIds: [...new Set(alerts.flatMap((alert) => alert.leadIds))].join(","),
+  };
   const first = alerts[0];
   if (alerts.length === 1 && first) {
     for (const key of ["branch", "rep"] as const) {
       const value = first.filters[key];
-      if (value) params.set(key, value);
+      if (value) targetParams[key] = value;
     }
   }
-  return `/leads?${params.toString()}`;
+  return buildHref("/leads", query, targetParams);
 }
 
 function formatInsightNumber(insight: StrategicInsight) {
@@ -86,7 +86,7 @@ export function KeyInsightCard({ insight, query }: { insight: StrategicInsight; 
 </div>
 <br></br>
       <p className="key-insight-note">{text.line}</p>
-      <Link className="key-insight-link" href={`${path}${query ? `?${query}` : ""}#${hash}`}>{text.link}</Link>
+      <Link className="key-insight-link" href={buildHref(`${path}#${hash}`, query)}>{text.link}</Link>
     </Card>
   );
 }

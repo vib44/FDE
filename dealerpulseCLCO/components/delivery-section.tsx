@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Check, Clock3, TriangleAlert } from "lucide-react";
 import { THRESHOLDS } from "../lib/config.ts";
+import { buildHref } from "../lib/navigation.ts";
 import { EMPTY_FILTERS } from "../lib/types.ts";
 import type { FilterState } from "../lib/types.ts";
 import { toDay } from "../lib/dates.ts";
@@ -63,9 +64,7 @@ function filtersFromParams(params: URLSearchParams): FilterState {
 }
 
 function leadDetailsHref(query: string, leadIds: string[]): string {
-  const params = new URLSearchParams(query);
-  params.set("leadIds", leadIds.join(","));
-  return `/leads?${params.toString()}`;
+  return buildHref("/leads", query, { leadIds: leadIds.join(",") });
 }
 
 export function DeliverySection() {
@@ -74,9 +73,7 @@ export function DeliverySection() {
   const tokens = useChartTokens();
   const query = searchParams.toString();
   function targetBranchHref(branchId: string): string {
-    const params = new URLSearchParams(query);
-    params.set("branch", branchId);
-    return `/targets?${params.toString()}`;
+    return buildHref("/targets", query, { branch: branchId });
   }
   const filters = useMemo(
     () => filtersFromParams(new URLSearchParams(query)),

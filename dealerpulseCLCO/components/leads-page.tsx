@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { STAGES } from "../lib/config.ts";
+import { buildHref, selectPageParams } from "../lib/navigation.ts";
 import { periodLabel } from "../lib/period.ts";
 import { filterLeads } from "../lib/metrics/filters.ts";
 import type { FilterState, Lead } from "../lib/types.ts";
@@ -43,20 +44,6 @@ function compareLeads(a: Lead, b: Lead, field: SortField, leads: Lead[]): number
 
 function formatDate(timestamp: number): string {
   return dateFormat.format(timestamp);
-}
-
-function branchHref(params: URLSearchParams, branchId: string): string {
-  const next = new URLSearchParams(params.toString());
-  for (const key of ["leadIds", "leadSources", "stage", "status", "sort", "order"]) next.delete(key);
-  next.set("branch", branchId);
-  return `/targets?${next.toString()}`;
-}
-
-function repHref(params: URLSearchParams, repId: string): string {
-  const next = new URLSearchParams(params.toString());
-  next.delete("leadIds");
-  next.set("rep", repId);
-  return `/leads?${next.toString()}`;
 }
 
 export function LeadsPage() {
@@ -121,7 +108,7 @@ export function LeadsPage() {
   }, [dataset, filters, leadIds, stage, status, selectedSources, sortField, sortDirection, probabilityPool]);
 
   function updateParam(key: string, value: string) {
-    const next = new URLSearchParams(params.toString());
+    const next = selectPageParams("leads", params.toString());
     if (value) next.set(key, value);
     else next.delete(key);
     router.replace(`/leads?${next.toString()}`, { scroll: false });
@@ -131,9 +118,22 @@ export function LeadsPage() {
     updateParam("leadSources", values.join(","));
   }
 
-  const backParams = new URLSearchParams(params.toString());
-  for (const key of ["stage", "status", "sort", "order"]) backParams.delete(key);
-  const backHref = backParams.size ? `/?${backParams.toString()}` : "/";
+  const activeLocalFilters = [
+    stage && { key: "stage", label: `Stage: ${stage.replaceAll("_", " ")}` },
+    status && { key: "status", label: `Status: ${status.replaceAll("_", " ")}` },
+    rep && { key: "rep", label: `Rep: ${dataset.reps.find((item) => item.id === rep)?.name ?? rep}` },
+    ...selectedSources.map((item) => ({ key: "leadSources", value: item, label: `Source: ${formatSourceName(item)}` })),
+    leadIds && { key: "leadIds", label: `Selected leads: ${leadIds.size}` },
+    params.has("sort") && { key: "sort", label: `Sort: ${sortField.replaceAll(/([A-Z])/g, " $1").toLowerCase()}` },
+    params.has("order") && { key: "order", label: `Order: ${sortDirection === "asc" ? "Ascending" : "Descending"}` },
+  ].filter((item): item is { key: string; label: string; value?: string } => Boolean(item));
+  const backHref = buildHref("/", params.toString());
+
+  function clearLocalFilters() {
+    const next = selectPageParams("leads", params.toString());
+    for (const key of ["rep", "stage", "status", "leadIds", "leadSources", "sort", "order"]) next.delete(key);
+    router.replace(next.size ? `/leads?${next.toString()}` : "/leads", { scroll: false });
+  }
   const branchName = branch
     ? dataset.branches.find((item) => item.id === branch)?.name ?? branch
     : null;
@@ -197,6 +197,23 @@ export function LeadsPage() {
           </select>
         </label>
       </section>
+      {activeLocalFilters.length > 0 && (
+        <section className="filter-chips leads-active-filters" aria-label="Active lead filters">
+          {activeLocalFilters.map((filter) => (
+            <button
+              key={`${filter.key}:${filter.value ?? ""}`}
+              type="button"
+              onClick={() => filter.key === "leadSources" && filter.value
+                ? updateSources(selectedSources.filter((item) => item !== filter.value))
+                : updateParam(filter.key, "")}
+              aria-label={`Remove ${filter.label} filter`}
+            >
+              <span>{filter.label}</span><span aria-hidden="true">×</span>
+            </button>
+          ))}
+          <button type="button" onClick={clearLocalFilters}>Clear all</button>
+        </section>
+      )}
 
       {leads.length ? (
         <div className="leads-table-wrap">
@@ -213,6 +230,13 @@ export function LeadsPage() {
                 <th scope="col">Source</th>
                 <th scope="col">Model</th>
                 <th scope="col">Last contacted</th>
+                <th
+                  scope="col"
+                  className="leads-date-heading"
+                  title="Expected close date from the supplied dealership data. An open lead is overdue when this date is before the dataset as-of date."
+                >
+                  Expected close date
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -234,11 +258,18 @@ export function LeadsPage() {
                   <td data-label="Expected value" className="is-numeric">
                     {value === null ? "—" : formatCurrency(value)}
                   </td>
-                  <td data-label="Branch"><Link href={branchHref(new URLSearchParams(params.toString()), lead.branchId)}>{lead.branchName}</Link></td>
-                  <td data-label="Representative"><Link href={repHref(new URLSearchParams(params.toString()), lead.repId)}>{lead.repName}</Link></td>
+                  <td data-label="Branch"><Link href={buildHref("/targets", params.toString(), { branch: lead.branchId })}>{lead.branchName}</Link></td>
+                  <td data-label="Representative"><Link href={buildHref("/leads", params.toString(), { rep: lead.repId })}>{lead.repName}</Link></td>
                   <td data-label="Source">{formatSourceName(lead.source)}</td>
                   <td data-label="Model">{lead.model}</td>
-                  <td data-label="Last contacted">{formatDate(lead.lastActivityAt)}</td>
+                  <td data-label="Last contacted">
+                    <span className="tag lead-date-tag">{formatDate(lead.lastActivityAt)}</span>
+                  </td>
+                  <td data-label="Expected close date">
+                    {lead.expectedCloseAt === null
+                      ? "—"
+                      : <span className="tag lead-date-tag">{formatDate(lead.expectedCloseAt)}</span>}
+                  </td>
                 </tr>
                 );
               })}
@@ -250,7 +281,7 @@ export function LeadsPage() {
           <span className="empty-state-icon" aria-hidden="true">⌕</span>
           <h2>No leads in this view</h2>
           <p>No lead records match this stage and filter combination. Try adjusting the lead filters.</p>
-          <Link className="empty-state-link" href="/">Browse all leads</Link>
+          <Link className="empty-state-link" href={buildHref("/leads", params.toString(), { stage: null, status: null, rep: null, leadIds: null, leadSources: null })}>Browse all leads</Link>
         </section>
       )}
     </PageContainer>

@@ -11,6 +11,7 @@ import {
   Target,
   Truck,
 } from "lucide-react";
+import { buildHref } from "../lib/navigation.ts";
 import { FilterBar } from "./filter-bar.tsx";
 import { useDataset } from "./dataset-provider.tsx";
 
@@ -36,12 +37,6 @@ const sectionNames = new Map<string, string>([
 function NavigationLinks() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const sharedParams = new URLSearchParams();
-  for (const key of ["from", "to", "range", "branch", "rep", "source", "model", "basis"]) {
-    const value = searchParams.get(key);
-    if (value) sharedParams.set(key, value);
-  }
-  const query = sharedParams.toString();
 
   return (
     <nav className="app-navigation" aria-label="Main navigation">
@@ -50,7 +45,7 @@ function NavigationLinks() {
           ? pathname === "/"
           : pathname === item.href || pathname.startsWith(`${item.href}/`) ||
             (item.href === "/targets" && pathname === "/sales");
-        const href = query ? `${item.href}?${query}` : item.href;
+        const href = buildHref(item.href, searchParams.toString());
         return (
           <Link
             key={item.href}
@@ -79,10 +74,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="app-shell">
       <aside className="app-sidebar">
-        <Link className="app-brand" href="/" aria-label="DealerPulse overview">
-          <span className="app-brand-mark" aria-hidden="true">D</span>
-          <span className="app-brand-name">DealerPulse</span>
-        </Link>
+        <Suspense fallback={<div className="app-brand" aria-hidden="true" />}>
+          <GlobalOverviewLink className="app-brand" ariaLabel="DealerPulse overview">
+            <span className="app-brand-mark" aria-hidden="true">D</span>
+            <span className="app-brand-name">DealerPulse</span>
+          </GlobalOverviewLink>
+        </Suspense>
         <Suspense fallback={<div className="app-navigation" aria-hidden="true" />}>
           <NavigationLinks />
         </Suspense>
@@ -93,7 +90,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="app-workspace">
         <header className="app-topbar">
           <nav className="app-breadcrumb" aria-label="Breadcrumb">
-            <Link href="/">Company</Link>
+            <Suspense fallback={<span>Company</span>}>
+              <GlobalOverviewLink>Company</GlobalOverviewLink>
+            </Suspense>
             <span aria-hidden="true">/</span>
             <span aria-current="page">{currentSection}</span>
           </nav>
@@ -110,15 +109,27 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
+function GlobalOverviewLink({
+  children,
+  className,
+  ariaLabel,
+}: {
+  children: ReactNode;
+  className?: string;
+  ariaLabel?: string;
+}) {
+  const searchParams = useSearchParams();
+  return (
+    <Link className={className} href={buildHref("/", searchParams.toString())} aria-label={ariaLabel}>
+      {children}
+    </Link>
+  );
+}
+
 function LeadExplorerLink() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const sharedParams = new URLSearchParams();
-  for (const key of ["from", "to", "range", "branch", "rep", "source", "model", "basis"]) {
-    const value = searchParams.get(key);
-    if (value) sharedParams.set(key, value);
-  }
-  const href = sharedParams.size ? `/leads?${sharedParams.toString()}` : "/leads";
+  const href = buildHref("/leads", searchParams.toString());
   const active = pathname === "/leads" || pathname.startsWith("/leads/");
   return (
     <Link

@@ -3,6 +3,7 @@
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { toDay } from "../lib/dates.ts";
 import { formatSourceName } from "../lib/format.ts";
+import { pageKeyForPath, selectPageParams } from "../lib/navigation.ts";
 import { useDataset } from "./dataset-provider.tsx";
 
 const DAY_MS = 86_400_000;
@@ -20,7 +21,7 @@ export function FilterBar() {
   const basis = params.get("basis") === "event" ? "event" : "created";
 
   function updateParam(key: string, value: string) {
-    const next = new URLSearchParams(params.toString());
+    const next = selectPageParams(pageKeyForPath(pathname), params.toString());
     if (value) next.set(key, value);
     else next.delete(key);
     const query = next.toString();
@@ -28,7 +29,7 @@ export function FilterBar() {
   }
 
   function setRange(value: string) {
-    const next = new URLSearchParams(params.toString());
+    const next = selectPageParams(pageKeyForPath(pathname), params.toString());
     if (value === "custom") {
       next.set("range", "custom");
     } else {
@@ -54,7 +55,7 @@ export function FilterBar() {
   }
 
   function setCustomDate(key: "from" | "to", value: string) {
-    const next = new URLSearchParams(params.toString());
+    const next = selectPageParams(pageKeyForPath(pathname), params.toString());
     next.delete("range");
     if (value) next.set(key, value);
     else next.delete(key);
@@ -69,7 +70,7 @@ export function FilterBar() {
   }
 
   function removeFilter(key: string) {
-    const next = new URLSearchParams(params.toString());
+    const next = selectPageParams(pageKeyForPath(pathname), params.toString());
     if (key === "date") {
       next.delete("from");
       next.delete("to");

@@ -3,6 +3,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { DELIVERED_STAGE, FUNNEL_BUCKET_TABLE, LOST, ORDER_STAGE, PRE_ORDER_STAGES, THRESHOLDS } from "../lib/config.ts";
+import { buildHref } from "../lib/navigation.ts";
+import { overdueOpen } from "../lib/metrics/delivery.ts";
 import { formatCurrency, formatNumber, formatPercent, formatSourceName } from "../lib/format.ts";
 import { filterLeads } from "../lib/metrics/filters.ts";
 import { filterOpenLeads, OPEN_LEAD_AGE_BUCKETS, type OpenLeadAgeBucketKey } from "../lib/metrics/open-leads.ts";
@@ -33,6 +35,7 @@ interface CombinedRow {
   awaitingValue: number;
   sources: SourceCount[];
   stages: CountTag[];
+  inactiveCount: number;
   overdueCount: number;
 }
 
@@ -64,9 +67,7 @@ function compareRows(a: CombinedRow, b: CombinedRow, sortBy: SortKey): number {
 }
 
 function leadHref(query: string, repId: string): string {
-  const params = new URLSearchParams(query);
-  params.set("rep", repId);
-  return `/leads?${params.toString()}`;
+  return buildHref("/leads", query, { rep: repId });
 }
 
 const stageLabel = (stage: string) => {
@@ -137,6 +138,13 @@ export function FunnelTeamSection({
         winRate: ratio(delivered.length, closed.length),
         revenue: delivered.reduce((sum, lead) => sum + lead.dealValue, 0),
         openCount: allOpenLeads.filter((lead) => lead.repId === rep.id).length,
+        inactiveCount: allOpenLeads.filter((lead) =>
+          lead.repId === rep.id &&
+          (lead.status === ORDER_STAGE
+            ? Math.floor((dataset.asOf - lead.lastActivityAt) / DAY) > THRESHOLDS.staleOrderDays
+            : Math.floor((dataset.asOf - lead.lastActivityAt) / DAY) > THRESHOLDS.coldLeadDays)).length,
+        overdueCount: overdueOpen(allOpenLeads, dataset.asOf)
+          .filter((lead) => lead.repId === rep.id).length,
       };
     });
     const leaderboard = repRows.filter((row) => row.leadCount > 0 && !isManager(row.rep))
@@ -180,10 +188,11 @@ export function FunnelTeamSection({
         awaitingValue: awaiting.reduce((sum, lead) => sum + lead.dealValue, 0),
         sources,
         stages,
-        overdueCount: branchOpen.filter((lead) =>
+        inactiveCount: branchOpen.filter((lead) =>
           lead.status === ORDER_STAGE
             ? Math.floor((dataset.asOf - lead.lastActivityAt) / DAY) > THRESHOLDS.staleOrderDays
             : Math.floor((dataset.asOf - lead.lastActivityAt) / DAY) > THRESHOLDS.coldLeadDays).length,
+        overdueCount: overdueOpen(branchOpen, dataset.asOf).length,
       };
     }).sort((a, b) => compareRows(a, b, sortBy));
     const totals = combinedRows.reduce((sum, row) => ({
@@ -191,8 +200,9 @@ export function FunnelTeamSection({
       liveValue: sum.liveValue + row.liveValue,
       awaitingCount: sum.awaitingCount + row.awaitingCount,
       awaitingValue: sum.awaitingValue + row.awaitingValue,
+      inactiveCount: sum.inactiveCount + row.inactiveCount,
       overdueCount: sum.overdueCount + row.overdueCount,
-    }), { liveCount: 0, liveValue: 0, awaitingCount: 0, awaitingValue: 0, overdueCount: 0 });
+    }), { liveCount: 0, liveValue: 0, awaitingCount: 0, awaitingValue: 0, inactiveCount: 0, overdueCount: 0 });
     const noPipelineBranches = combinedRows.filter((row) => row.liveDeals.length === 0)
       .map((row) => row.branch);
     return {
@@ -219,7 +229,6 @@ export function FunnelTeamSection({
     value: status,
     label: status.replaceAll("_", " "),
   }));
-  const queryString = query ? `?${query}` : "";
   const bucketFilters = (
     <div className="representative-filters funnel-bucket-filters">
       <CompactMultiSelect
@@ -269,6 +278,7 @@ export function FunnelTeamSection({
     `${formatCurrency(view.totals.awaitingValue)} · ${formatNumber(view.totals.awaitingCount)}`,
     "",
     "",
+    view.totals.inactiveCount ? `${formatNumber(view.totals.inactiveCount)} inactive` : "—",
     view.totals.overdueCount ? `${formatNumber(view.totals.overdueCount)} overdue` : "—",
   ];
 
@@ -284,6 +294,12 @@ export function FunnelTeamSection({
         rows={view.combinedRows}
         rowKey={(row) => row.branchId}
         totalsRow={totalsRow}
+        footer={
+          <p className="funnel-table-definition">
+            <strong>Inactive:</strong> open pre-order leads with no activity for more than {formatNumber(THRESHOLDS.coldLeadDays)} days, or undelivered orders with no activity for more than {formatNumber(THRESHOLDS.staleOrderDays)} days.
+            {" "}<strong>Overdue:</strong> open leads whose expected close date is before the dataset&apos;s as-of date.
+          </p>
+        }
         emptyMessage="No branch results match the current filters."
         columns={[
           {
@@ -291,7 +307,7 @@ export function FunnelTeamSection({
             minWidth: FUNNEL_BUCKET_TABLE.minWidths.branch,
             render: (row) => (
               <span className="branch-cell">
-                <Link href={`/branch/${row.branchId}${queryString}`}>{row.branch}</Link>
+                <Link href={buildHref(`/branch/${row.branchId}`, query, { branch: row.branchId })}>{row.branch}</Link>
                 {row.liveDeals.length === 0 && <Tag tone="bad">{FUNNEL_BUCKET_TABLE.noUnorderedTag}</Tag>}
               </span>
             ),
@@ -328,11 +344,19 @@ export function FunnelTeamSection({
             ),
           },
           {
-            label: "Overdue",
+            label: "Inactive",
             minWidth: FUNNEL_BUCKET_TABLE.minWidths.overdue,
-            tooltip: FUNNEL_BUCKET_TABLE.tooltips.overdue
+            tooltip: FUNNEL_BUCKET_TABLE.tooltips.inactive
               .replace("{cold}", formatNumber(THRESHOLDS.coldLeadDays))
               .replace("{stale}", formatNumber(THRESHOLDS.staleOrderDays)),
+            render: (row) => row.inactiveCount
+              ? <Tag tone="warn">{formatNumber(row.inactiveCount)} inactive</Tag>
+              : <span className="cell-muted">—</span>,
+          },
+          {
+            label: "Overdue",
+            minWidth: FUNNEL_BUCKET_TABLE.minWidths.overdue,
+            tooltip: "Open leads whose expected close date is before the dataset as-of date.",
             render: (row) => row.overdueCount
               ? <Tag tone="warn">{formatNumber(row.overdueCount)} overdue</Tag>
               : <span className="cell-muted">—</span>,
@@ -349,7 +373,12 @@ export function FunnelTeamSection({
         rowKey={(row) => row.repId}
         rowHref={(row) => leadHref(query, row.repId)}
         emptyMessage="No reps have assigned leads in this scope. Reset filters to see the full team."
-        emptyAction={{ label: "Reset filters", href: `/funnel${queryString}` }}
+        emptyAction={{
+          label: "Reset filters",
+          href: buildHref("/funnel", query, {
+            from: null, to: null, range: null, branch: null, source: null, model: null, basis: null,
+          }),
+        }}
         columns={[
           { label: "Rank", align: "right", render: (row) => formatNumber(row.rank) },
           { label: "Representative", render: (row) => row.repName },
@@ -357,6 +386,22 @@ export function FunnelTeamSection({
           { label: "Win rate", align: "right", render: (row) => row.winRate === null ? "—" : formatPercent(row.winRate) },
           { label: "Revenue", align: "right", render: (row) => formatCurrency(row.revenue) },
           { label: "Open leads", align: "right", render: (row) => formatNumber(row.openCount) },
+          {
+            label: "Inactive",
+            align: "right",
+            tooltip: FUNNEL_BUCKET_TABLE.tooltips.inactive
+              .replace("{cold}", formatNumber(THRESHOLDS.coldLeadDays))
+              .replace("{stale}", formatNumber(THRESHOLDS.staleOrderDays)),
+            render: (row) => row.inactiveCount
+              ? <Tag tone="warn">{formatNumber(row.inactiveCount)} inactive</Tag>
+              : "—",
+          },
+          {
+            label: "Overdue",
+            align: "right",
+            tooltip: "Open leads whose expected close date is before the dataset as-of date.",
+            render: (row) => row.overdueCount ? <Tag tone="warn">{formatNumber(row.overdueCount)} overdue</Tag> : "—",
+          },
           { label: "Assigned leads", align: "right", render: (row) => formatNumber(row.leadCount) },
         ]}
       />

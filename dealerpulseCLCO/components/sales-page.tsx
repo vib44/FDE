@@ -36,7 +36,6 @@ function filtersFromParams(params: URLSearchParams): FilterState {
     branch: params.get("branch"),
     source: params.get("source"),
     model: params.get("model"),
-    rep: params.get("rep"),
     timeBasis: params.get("basis") === "event" ? "event" : "created",
   };
 }
@@ -44,8 +43,7 @@ function filtersFromParams(params: URLSearchParams): FilterState {
 function dimensionsMatch(filters: FilterState, lead: Dataset["leads"][number]): boolean {
   return (!filters.branch || lead.branchId === filters.branch) &&
     (!filters.source || lead.source === filters.source) &&
-    (!filters.model || lead.model === filters.model) &&
-    (!filters.rep || lead.repId === filters.rep);
+    (!filters.model || lead.model === filters.model);
 }
 
 function monthRangeMatches(month: string, filters: FilterState): boolean {

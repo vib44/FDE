@@ -32,7 +32,6 @@ function filtersFromParams(params: URLSearchParams): FilterState {
     from: start,
     to: end === null ? null : end + 86_400_000 - 1,
     branch: params.get("branch"),
-    rep: params.get("rep"),
     source: params.get("source"),
     model: params.get("model"),
     timeBasis: params.get("basis") === "event" ? "event" : "created",

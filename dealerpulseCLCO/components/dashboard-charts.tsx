@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import type { ECElementEvent } from "echarts/core";
 import { STAGES } from "../lib/config.ts";
+import { buildHref } from "../lib/navigation.ts";
 import { conversionFunnel, leadFlowByMonth } from "../lib/metrics/dashboard-charts.ts";
 import type { Dataset, FilterState } from "../lib/types.ts";
 import { periodLabel } from "../lib/period.ts";
@@ -40,15 +41,13 @@ export function DashboardCharts({
       const stage = STAGES[event.dataIndex ?? -1];
       if (!stage) return;
       if (stage === "contacted" || stage === "negotiation") {
-        const params = new URLSearchParams(searchParams.toString());
         const anchor = stage === "contacted" ? "step-contacted-test-drive" : "step-negotiation-order";
-        router.push(`/deals${params.size ? `?${params.toString()}` : ""}#${anchor}`);
+        router.push(buildHref(`/deals#${anchor}`, searchParams.toString()));
         return;
       }
       drillToStage(stage);
     };
-    const query = searchParams.toString();
-    const dealsHref = (anchor: string) => `/deals${query ? `?${query}` : ""}#${anchor}`;
+    const dealsHref = (anchor: string) => buildHref(`/deals#${anchor}`, searchParams.toString());
     return (
       <section className="funnel-chart-section" aria-label="Conversion funnel">
         <ChartPanel

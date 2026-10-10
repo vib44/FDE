@@ -9,6 +9,19 @@ export const ORDER_STAGE: Stage = "order_placed";
 export const DELIVERED_STAGE: Stage = "delivered";
 export const FIRST_RESPONSE_STAGE: Stage = "contacted";
 
+/** Filters controlled by the app-wide filter bar and carried between pages. */
+export const GLOBAL_FILTER_KEYS = ["from", "to", "range", "branch", "source", "model", "basis"] as const;
+
+/** Query parameters owned by each page; all other parameters are ignored there. */
+export const PAGE_LOCAL_KEYS = {
+  overview: [],
+  targets: [],
+  funnel: [],
+  delivery: [],
+  deals: [],
+  leads: ["rep", "stage", "status", "leadIds", "leadSources", "sort", "order"],
+} as const satisfies Record<string, readonly string[]>;
+
 export const THRESHOLDS = {
   coldLeadDays: 14,           // pre-order lead idle longer than this is "cold"
   staleOrderDays: 30,         // order with no activity this long is "stale"
@@ -67,7 +80,7 @@ export const FUNNEL_BUCKET_TABLE = {
   tooltips: {
     unordered: "Customers who haven't ordered yet. The rep still has to win the sale.",
     ordered: "Customers who have ordered. The car hasn't been delivered yet.",
-    overdue: "Unordered leads idle over {cold} days and orders idle over {stale} days.",
+    inactive: "Unordered leads with no activity for over {cold} days and orders with no activity for over {stale} days.",
   },
   noUnorderedTag: "No unordered deals left",
 } as const;

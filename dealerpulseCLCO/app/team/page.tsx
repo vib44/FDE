@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { buildHref } from "../../lib/navigation.ts";
 
 export default async function TeamPage({
   searchParams,
@@ -10,5 +11,5 @@ export default async function TeamPage({
     if (typeof value === "string") params.set(key, value);
     else if (value) value.forEach((item) => params.append(key, item));
   }
-  redirect(`/funnel${params.size ? `?${params.toString()}` : ""}`);
+  redirect(buildHref("/funnel", params));
 }

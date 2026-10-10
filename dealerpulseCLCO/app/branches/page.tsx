@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { buildHref } from "../../lib/navigation.ts";
 
 export default async function BranchesPage({
   searchParams,
@@ -11,5 +12,5 @@ export default async function BranchesPage({
     if (typeof value === "string") query.set(key, value);
     else if (value) value.forEach((item) => query.append(key, item));
   }
-  redirect(`/deals${query.size ? `?${query.toString()}` : ""}`);
+  redirect(buildHref("/deals", query));
 }

@@ -2,13 +2,19 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { normalize } from "../lib/data/normalize.ts";
 import {
+  dealProgressionMetrics,
   lostAtStage,
   openAtStage,
+  overdueAtStage,
+  inProgressPipeline,
   stageConversion,
+  testDriveLift,
   timeToNextStage,
   winRateFromStage,
+  weakestSalesStep,
 } from "../lib/metrics/stage-progression.ts";
 import type { Lead } from "../lib/types.ts";
+import { EMPTY_FILTERS } from "../lib/types.ts";
 
 const dataset = normalize(JSON.parse(readFileSync("data/dealership_data.json", "utf8")));
 
@@ -42,6 +48,85 @@ function testLead(
 }
 
 describe("stage progression metrics", () => {
+  it("calculates the unordered pipeline and weakest sales step", () => {
+    const leads = [
+      testLead("new", "new"),
+      testLead("contacted", "contacted", { dealValue: 200_000 }),
+      testLead("ordered", "order_placed", { dealValue: 300_000 }),
+      testLead("delivered", "delivered"),
+      testLead("lost", "lost"),
+    ];
+
+    expect(inProgressPipeline(leads)).toEqual({ count: 2, value: 300_000 });
+    expect(weakestSalesStep(0.767, 0.82)).toEqual({
+      label: "booking a test drive",
+      rate: 0.767,
+    });
+    expect(weakestSalesStep(0.82, 0.767)).toEqual({
+      label: "moving from negotiation to an order",
+      rate: 0.767,
+    });
+  });
+
+  it("calculates test-drive lift from closed conversion rates, not the raw test-drive win rate", () => {
+    const leads = [
+      ...Array.from({ length: 10 }, (_, index) => testLead(
+        `test-drive-${index}`,
+        index < 6 ? "delivered" : "lost",
+        { reached: { ...testLead("base", "new").reached, contacted: 1, test_drive: 2 } },
+      )),
+      ...Array.from({ length: 10 }, (_, index) => testLead(
+        `contacted-${index}`,
+        index < 2 ? "delivered" : "lost",
+        { reached: { ...testLead("base", "new").reached, contacted: 1 } },
+      )),
+    ];
+
+    expect(winRateFromStage(leads, "test_drive")).toBe(0.6);
+    expect(testDriveLift(leads)).toBeCloseTo(0.2);
+    expect(testDriveLift(leads)).not.toBeCloseTo(0.6);
+  });
+
+  it("records the supplied dataset summary, Step 2 lift, typical stage times and branch conversion rates", () => {
+    const pipeline = inProgressPipeline(dataset.leads);
+    const lift = testDriveLift(dataset.leads);
+    const bookingTime = timeToNextStage(dataset.leads, "contacted", "test_drive");
+    const closingTime = timeToNextStage(dataset.leads, "negotiation", "order_placed");
+    const branchRates = dataset.branches.map((branch) => {
+      const leads = dataset.leads.filter((lead) => lead.branchId === branch.id);
+      return {
+        branch: branch.name,
+        booking: stageConversion(leads, "contacted", "test_drive"),
+        closing: stageConversion(leads, "negotiation", "order_placed"),
+      };
+    });
+    expect(pipeline).toEqual({ count: 24, value: 65_680_000 });
+    expect(lift).toBeCloseTo(0.1534, 4);
+    expect(bookingTime).toMatchObject({
+      count: 300,
+      medianDays: 5.899098368055556,
+      percentile75Days: 7.959628043981481,
+    });
+    expect(closingTime).toMatchObject({
+      count: 198,
+      medianDays: 8.20861546875,
+      percentile75Days: 11.170198958333334,
+    });
+    expect(stageConversion(dataset.leads, "contacted", "test_drive")).toBeCloseTo(0.7673, 4);
+    expect(stageConversion(dataset.leads, "negotiation", "order_placed")).toBeCloseTo(0.8426, 4);
+    expect(weakestSalesStep(
+      stageConversion(dataset.leads, "contacted", "test_drive"),
+      stageConversion(dataset.leads, "negotiation", "order_placed"),
+    )).toEqual({ label: "booking a test drive", rate: 0.7672634271099744 });
+    expect(branchRates).toEqual([
+      { branch: "Downtown Toyota", booking: 0.8625, closing: 0.8679245283018868 },
+      { branch: "Highway Toyota", booking: 0.7441860465116279, closing: 0.7962962962962963 },
+      { branch: "Lakeside Toyota", booking: 0.5869565217391305, closing: 0.7142857142857143 },
+      { branch: "Central Toyota", booking: 0.8, closing: 0.8333333333333334 },
+      { branch: "Eastside Toyota", booking: 0.7676767676767676, closing: 0.8939393939393939 },
+    ]);
+  });
+
   it("calculates conversion overall and when the same function is scoped by branch or rep", () => {
     const leads = [
       testLead("a1", "delivered", {
@@ -145,5 +230,66 @@ describe("stage progression metrics", () => {
       daysInStage: 8,
       daysSinceLastActivity: 6,
     });
+  });
+
+  it("computes Deals in progress KPI rates, order values, timing, and shared overdue rows", () => {
+    const day = 86_400_000;
+    const completed = [1, 2, 3, 4].map((testDriveDay, index) => testLead(
+      `completed-${index}`,
+      index < 2 ? "order_placed" : "test_drive",
+      {
+        dealValue: (index + 1) * 100_000,
+        reached: {
+          ...testLead("base", "new").reached,
+          contacted: 0,
+          test_drive: testDriveDay * day,
+          negotiation: (testDriveDay + 1) * day,
+          order_placed: index < 2 ? (testDriveDay + 2) * day : null,
+        },
+      },
+    ));
+    const leads = [
+      ...completed,
+      testLead("waiting-overdue", "contacted", {
+        reached: { ...testLead("base", "new").reached, contacted: 0 },
+        lastActivityAt: 14 * day,
+      }),
+      testLead("waiting-not-overdue", "contacted", {
+        reached: { ...testLead("base", "new").reached, contacted: 19 * day },
+        lastActivityAt: 19 * day,
+      }),
+      testLead("negotiation-overdue", "negotiation", {
+        reached: { ...testLead("base", "new").reached, contacted: 0, test_drive: day, negotiation: 13 * day },
+        lastActivityAt: 13 * day,
+      }),
+      testLead("negotiation-not-overdue", "negotiation", {
+        reached: { ...testLead("base", "new").reached, contacted: 0, test_drive: day, negotiation: 19 * day },
+        lastActivityAt: 19 * day,
+      }),
+    ];
+    const metrics = dealProgressionMetrics(leads, EMPTY_FILTERS, 20 * day);
+
+    expect(metrics.bookingRate).toBe(6 / 8);
+    expect(metrics.testDriveOrderRate).toBe(2 / 6);
+    expect(metrics.closingRate).toBe(2 / 6);
+    expect(metrics.testDriveCount).toBe(6);
+    expect(metrics.negotiationCount).toBe(6);
+    expect(metrics.orderCount).toBe(2);
+    expect(metrics.orderValue).toBe(300_000);
+    expect(metrics.orderValue / metrics.orderCount).toBe(150_000);
+    expect(metrics.bookingTime.medianDays).toBe(1.5);
+    expect(metrics.testDriveOrderTime.medianDays).toBe(2);
+    expect(metrics.bookingOverdueRows).toEqual(overdueAtStage(
+      metrics.bookingOpenRows,
+      metrics.bookingTime.percentile75Days,
+    ));
+    expect(metrics.closingOverdueRows).toEqual(overdueAtStage(
+      metrics.closingOpenRows,
+      metrics.closingTime.percentile75Days,
+    ));
+    expect(metrics.bookingOverdueRows.map(({ lead }) => lead.id)).toEqual(["waiting-overdue"]);
+    expect(metrics.closingOverdueRows.map(({ lead }) => lead.id)).toEqual(["negotiation-overdue"]);
+    expect(metrics.bookingOverdueRows.length).toBe(1);
+    expect(metrics.closingOverdueRows.length).toBe(1);
   });
 });

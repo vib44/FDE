@@ -2,16 +2,19 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import type { ReactNode } from "react";
+import { TriangleAlert } from "lucide-react";
 import { CONTROLLABLE_LOSS_REASONS } from "../lib/config.ts";
+import { buildHref } from "../lib/navigation.ts";
 import type { Stage } from "../lib/config.ts";
 import { formatCurrency, formatNumber, formatPercent } from "../lib/format.ts";
 import { filterLeads } from "../lib/metrics/filters.ts";
 import {
   lostAtStage,
+  dealProgressionMetrics,
   openAtStage,
-  stageConversion,
-  timeToNextStage,
-  winRateFromStage,
+  overdueAtStage,
+  testDriveLift,
 } from "../lib/metrics/stage-progression.ts";
 import type { Dataset, FilterState, Lead } from "../lib/types.ts";
 import { Card, CardHeader } from "./shared-ui.tsx";
@@ -28,22 +31,10 @@ function isInRange(timestamp: number, filters: FilterState): boolean {
     (filters.to === null || timestamp <= filters.to);
 }
 
-function stageTimestamp(lead: Lead, stage: Stage): number | null {
-  return lead.history.filter((event) => event.status === stage).at(-1)?.ts ?? lead.reached[stage];
-}
-
 function closeTimestamp(lead: Lead): number {
   return lead.status === "delivered"
     ? lead.delivery?.deliveredAt ?? lead.lastActivityAt
     : lead.history.filter((event) => event.status === "lost").at(-1)?.ts ?? lead.lastActivityAt;
-}
-
-function applyEventRange(leads: Lead[], stage: Stage, filters: FilterState): Lead[] {
-  if (filters.timeBasis !== "event" || (filters.from === null && filters.to === null)) return leads;
-  return leads.filter((lead) => {
-    const timestamp = lead.reached[stage];
-    return timestamp !== null && isInRange(timestamp, filters);
-  });
 }
 
 function formatDays(days: number | null): string {
@@ -56,23 +47,66 @@ function percentagePointDifference(value: number | null): string {
 }
 
 function makeLeadHref(query: string, leadIds: string[]): string {
-  const params = new URLSearchParams(query);
-  params.set("leadIds", leadIds.join(","));
-  return `/leads?${params.toString()}`;
+  return buildHref("/leads", query, { leadIds: leadIds.join(",") });
 }
 
 function drillHref(query: string, key: "branch" | "rep", id: string, stage: Stage): string {
-  const params = new URLSearchParams(query);
-  params.delete("stage");
-  params.delete("leadIds");
-  if (key === "rep") {
-    params.set("rep", id);
-    return `/funnel?${params.toString()}`;
-  }
-  params.set("branch", id);
-  return stage === "contacted"
-    ? `/funnel?${params.toString()}`
-    : `/delivery?${params.toString()}`;
+  if (key === "rep") return buildHref("/leads", query, { rep: id, stage });
+  return buildHref(stage === "contacted" ? "/funnel" : "/delivery", query, { branch: id });
+}
+
+function StageKpiCard({
+  label,
+  value,
+  unit,
+  labelTooltip,
+  children,
+}: {
+  label: string;
+  value: string;
+  unit: string;
+  labelTooltip: string;
+  children: ReactNode;
+}) {
+  return (
+    <Card className="deals-stage-kpi">
+      <p className="deals-stage-kpi-label" title={labelTooltip}>{label}</p>
+      <div className="deals-stage-kpi-content">
+        <div className="deals-stage-kpi-primary">
+          <strong>{value}</strong>
+          <span>{unit}</span>
+        </div>
+        <dl className="deals-stage-kpi-rows">{children}</dl>
+      </div>
+    </Card>
+  );
+}
+
+function StageKpiRow({
+  label,
+  tooltip,
+  value,
+  href,
+  overdue = false,
+}: {
+  label: string;
+  tooltip: string;
+  value: string;
+  href?: string;
+  overdue?: boolean;
+}) {
+  const valueContent = (
+    <strong className={overdue ? "is-overdue" : undefined}>
+      {overdue && <TriangleAlert className="deals-stage-kpi-warning" aria-hidden="true" />}
+      {value}
+    </strong>
+  );
+  return (
+    <div className="deals-stage-kpi-row">
+      <dt title={tooltip}>{label}</dt>
+      <dd>{href ? <Link href={href}>{valueContent}</Link> : valueContent}</dd>
+    </div>
+  );
 }
 
 function WaitingList({
@@ -95,21 +129,31 @@ function WaitingList({
   query: string;
 }) {
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const overdueLeadIds = new Set(overdueAtStage(rows, percentile75Days).map(({ lead }) => lead.id));
 
   return (
     <div className="progression-waiting-list">
-      <h3>{title}</h3>
+      <h3 id={stage === "contacted" ? "step2-waiting-list" : "step4-open-negotiations"}>{title}</h3>
       <div className="progression-table-scroll">
-        <table className="progression-table">
+        <table className="progression-table progression-waiting-table">
+          <colgroup>
+            <col className="progression-col-customer" />
+            <col className="progression-col-rep" />
+            <col className="progression-col-branch" />
+            <col className="progression-col-model" />
+            <col className="progression-col-value" />
+            <col className="progression-col-days" />
+          </colgroup>
           <thead>
             <tr>
-              <th>Customer</th>
-              <th>Rep</th>
-              <th>Branch</th>
-              <th>Model</th>
+              <th scope="col" className="progression-customer-column">Customer</th>
+              <th scope="col">Rep</th>
+              <th scope="col">Branch</th>
+              <th scope="col">Model</th>
               <th className="is-numeric">Deal value</th>
-              <th className="is-numeric">Days in stage</th>
-              <th>Last contact</th>
+              <th className="is-numeric progression-days-column" title={`Median time: ${formatDays(medianDays)}. 75th percentile: ${formatDays(percentile75Days)}.`}>
+                Days waiting
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -126,28 +170,36 @@ function WaitingList({
                   }
                 }}
               >
-                <td><button type="button" className="progression-customer-button" onClick={() => setSelectedLead(lead)}>{lead.customerName}</button></td>
+                <td className="progression-customer-column">
+                  <button
+                    type="button"
+                    className="progression-customer-button progression-truncate"
+                    title={lead.customerName}
+                    onClick={() => setSelectedLead(lead)}
+                  >
+                    {lead.customerName}
+                  </button>
+                </td>
                 <td>
                   <Link href={drillHref(query, "rep", lead.repId, stage)} onClick={(event) => event.stopPropagation()}>
-                    {lead.repName}
+                    <span className="progression-truncate" title={lead.repName}>{lead.repName}</span>
                   </Link>
                 </td>
                 <td>
                   <Link href={drillHref(query, "branch", lead.branchId, stage)} onClick={(event) => event.stopPropagation()}>
-                    {lead.branchName}
+                    <span className="progression-truncate" title={lead.branchName}>{lead.branchName}</span>
                   </Link>
                 </td>
-                <td>{lead.model}</td>
+                <td className="progression-truncate" title={lead.model}>{lead.model}</td>
                 <td className="is-numeric">{formatCurrency(lead.dealValue)}</td>
-                <td className="is-numeric">
+                <td className="is-numeric progression-days-column">
                   {formatNumber(daysInStage, 1)}
-                  {percentile75Days !== null && daysInStage > percentile75Days
+                  {overdueLeadIds.has(lead.id)
                     ? <span className="progression-age-chip is-overdue">Overdue</span>
                     : medianDays !== null && daysInStage > medianDays
                       ? <span className="progression-age-chip">Due</span>
                       : null}
                 </td>
-                <td>{dayFormat.format(lead.lastActivityAt)}</td>
               </tr>
             ))}
           </tbody>
@@ -254,37 +306,21 @@ export function DealProgressionSection({
   dataset,
   filters,
   query,
+  byBranch,
 }: {
   dataset: Dataset;
   filters: FilterState;
   query: string;
+  byBranch: ReactNode;
 }) {
   const progression = useMemo(() => {
     const leads = filterLeads(dataset, { ...filters, timeBasis: "created" });
-    const bookingCohort = applyEventRange(leads, "contacted", filters);
-    const closingCohort = applyEventRange(leads, "negotiation", filters);
-    const bookingRate = stageConversion(bookingCohort, "contacted", "test_drive");
-    const closingRate = stageConversion(closingCohort, "negotiation", "order_placed");
-    const bookingTime = timeToNextStage(bookingCohort, "contacted", "test_drive");
-    const closingTime = timeToNextStage(closingCohort, "negotiation", "order_placed");
+    const metrics = dealProgressionMetrics(leads, filters, dataset.asOf);
     const closed = filters.timeBasis === "event" && (filters.from !== null || filters.to !== null)
       ? leads.filter((lead) => (lead.status === "delivered" || lead.status === "lost") &&
         isInRange(closeTimestamp(lead), filters))
       : leads;
-    const testDriveWin = winRateFromStage(closed, "test_drive");
-    const noDriveClosed = closed.filter((lead) => lead.reached.contacted !== null &&
-      lead.reached.test_drive === null);
-    const noDriveWin = noDriveClosed.length
-      ? noDriveClosed.filter((lead) => lead.status === "delivered").length / noDriveClosed.length
-      : null;
-    const lift = testDriveWin === null || noDriveWin === null ? null : testDriveWin - noDriveWin;
-
-    const bookingOpenRows = openAtStage(leads, "contacted", dataset.asOf)
-      .filter(({ lead }) => filters.timeBasis !== "event" || isInRange(
-        stageTimestamp(lead, "contacted") ?? lead.lastActivityAt, filters));
-    const closingOpenRows = openAtStage(leads, "negotiation", dataset.asOf)
-      .filter(({ lead }) => filters.timeBasis !== "event" || isInRange(
-        stageTimestamp(lead, "negotiation") ?? lead.lastActivityAt, filters));
+    const lift = testDriveLift(closed);
     const bookingLost = lostBeforeTestDrive(filters.timeBasis === "event" &&
       (filters.from !== null || filters.to !== null)
       ? leads.filter((lead) => lead.status === "lost" && isInRange(closeTimestamp(lead), filters))
@@ -297,13 +333,8 @@ export function DealProgressionSection({
     );
 
     return {
-      bookingRate,
-      closingRate,
-      bookingTime,
-      closingTime,
+      ...metrics,
       lift,
-      bookingOpenRows,
-      closingOpenRows,
       bookingLost,
       negotiationLost,
     };
@@ -317,15 +348,64 @@ export function DealProgressionSection({
   const bookingSentence = `Booking rate: ${progression.bookingRate === null ? "—" : formatPercent(progression.bookingRate)} · Typical time to book: ${formatDays(progression.bookingTime.medianDays)} · ${liftText}`;
   const negotiationLostValue = progression.negotiationLost.value;
   const closingSentence = `Closing rate: ${progression.closingRate === null ? "—" : formatPercent(progression.closingRate)} · Typical time to close: ${formatDays(progression.closingTime.medianDays)} · ${formatCurrency(negotiationLostValue)} lost at this stage.`;
+  const bookingWaitingValue = progression.bookingOpenRows.reduce((sum, row) => sum + row.lead.dealValue, 0);
+  const closingWaitingValue = progression.closingOpenRows.reduce((sum, row) => sum + row.lead.dealValue, 0);
+  const bookingOverdueCount = progression.bookingOverdueRows.length;
+  const closingOverdueCount = progression.closingOverdueRows.length;
+  const bookingHref = buildHref("/deals#step2-waiting-list", query);
+  const closingHref = buildHref("/deals#step4-open-negotiations", query);
+  const formatWholeDays = (days: number | null) => days === null ? "—" : formatNumber(Math.round(days));
+  const formatCrores = (value: number) => `₹${formatNumber(value / 10_000_000, 2)} Cr`;
+  const formatLakhs = (value: number) => `₹${formatNumber(value / 100_000, 1)} L`;
 
   return (
     <section className="deal-progression-section" aria-label="Deal progression">
+      <div className="deals-stage-kpi-grid" aria-label="Deal progression summary">
+        <StageKpiCard
+          label="Orders won"
+          value={formatNumber(progression.orderCount)}
+          unit="orders"
+          labelTooltip="Leads that reached the order-placed stage under the current filters."
+        >
+          <StageKpiRow label="Total value" tooltip="Combined deal value of leads that reached order placed." value={formatCrores(progression.orderValue)} />
+          <StageKpiRow label="Test drive → order" tooltip="Orders divided by the leads that reached test drive." value={progression.testDriveOrderRate === null ? "—" : formatPercent(progression.testDriveOrderRate)} />
+          <StageKpiRow label="Typical days to order" tooltip="Whole days from test drive to order for leads that reached both stages." value={formatWholeDays(progression.testDriveOrderTime.medianDays)} />
+          <StageKpiRow label="Average order" tooltip="Combined value of orders divided by the number of leads that reached order placed." value={progression.orderCount ? formatLakhs(progression.orderValue / progression.orderCount) : "—"} />
+        </StageKpiCard>
+        <StageKpiCard
+          label="Test drives"
+          value={formatNumber(progression.testDriveCount)}
+          unit="booked or done"
+          labelTooltip="Leads that reached the test-drive stage under the current filters."
+        >
+          <StageKpiRow label="Booking rate" tooltip="Leads reaching test drive divided by leads reaching contacted." value={progression.bookingRate === null ? "—" : formatPercent(progression.bookingRate)} />
+          <StageKpiRow label="Typical days to book" tooltip="Whole days from first contact to test drive for leads that reached both stages." value={formatWholeDays(progression.bookingTime.medianDays)} />
+          <StageKpiRow label="Waiting now" tooltip="Count and combined value of leads currently in contacted." value={`${formatNumber(progression.bookingOpenRows.length)} · ${formatCurrency(bookingWaitingValue)}`} href={bookingHref} />
+          <StageKpiRow label="Overdue" tooltip="Waiting leads whose time in contacted is longer than most leads take before booking a test drive." value={formatNumber(bookingOverdueCount)} href={bookingHref} overdue={bookingOverdueCount > 0} />
+        </StageKpiCard>
+        <StageKpiCard
+          label="Negotiations"
+          value={formatNumber(progression.negotiationCount)}
+          unit="reached"
+          labelTooltip="Leads that reached the negotiation stage under the current filters."
+        >
+          <StageKpiRow label="Closing rate" tooltip="Leads reaching order placed divided by leads reaching negotiation." value={progression.closingRate === null ? "—" : formatPercent(progression.closingRate)} />
+          <StageKpiRow label="Typical days to close" tooltip="Whole days from negotiation to order for leads that reached both stages." value={formatWholeDays(progression.closingTime.medianDays)} />
+          <StageKpiRow label="Open now" tooltip="Count and combined value of leads currently in negotiation." value={`${formatNumber(progression.closingOpenRows.length)} · ${formatCurrency(closingWaitingValue)}`} href={closingHref} />
+          <StageKpiRow label="Overdue" tooltip="Open negotiations whose time in negotiation is longer than most leads take before ordering." value={formatNumber(closingOverdueCount)} href={closingHref} overdue={closingOverdueCount > 0} />
+        </StageKpiCard>
+      </div>
       <div className="deal-progression-grid">
         <Card id="step-contacted-test-drive" className="deal-progression-card">
           <CardHeader title="Step 2 · Contacted → Test drive" takeaway={bookingSentence}>
             <details className="progression-definition">
-              <summary>Definitions</summary>
-              <p>&quot;Test drive&quot; = booked or done (the data has no separate scheduled date).</p>
+              <summary title={`Typical time is the median; 75th percentile: ${formatDays(progression.bookingTime.percentile75Days)}.`}>
+                Definitions
+              </summary>
+              <p>
+                &quot;Test drive&quot; = booked or done (the data has no separate scheduled date).
+                {" "}Typical time uses the median; 75th percentile: {formatDays(progression.bookingTime.percentile75Days)}.
+              </p>
             </details>
           </CardHeader>
           <WaitingList
@@ -340,20 +420,30 @@ export function DealProgressionSection({
           />
           <LossReasons title="Lost before a test drive" rows={progression.bookingLost} />
         </Card>
-        <Card id="step-negotiation-order" className="deal-progression-card">
-          <CardHeader title="Step 4 · Negotiation → Order" takeaway={closingSentence} />
-          <WaitingList
-            title="Open negotiations"
-            stage="negotiation"
-            rows={progression.closingOpenRows}
-            medianDays={progression.closingTime.medianDays}
-            percentile75Days={progression.closingTime.percentile75Days}
-            stageRate={progression.closingRate}
-            rateLabel="Closing rate"
-            query={query}
-          />
-          <LossReasons title="Why deals fall through at negotiation" rows={progression.negotiationLost.reasons} />
-        </Card>
+        <div className="deal-progression-right-column">
+          {byBranch}
+          <Card id="step-negotiation-order" className="deal-progression-card">
+            <CardHeader title="Step 4 · Negotiation → Order" takeaway={closingSentence}>
+              <details className="progression-definition">
+                <summary title={`Typical time is the median; 75th percentile: ${formatDays(progression.closingTime.percentile75Days)}.`}>
+                  Time stats
+                </summary>
+                <p>Typical time uses the median; 75th percentile: {formatDays(progression.closingTime.percentile75Days)}.</p>
+              </details>
+            </CardHeader>
+            <WaitingList
+              title="Open negotiations"
+              stage="negotiation"
+              rows={progression.closingOpenRows}
+              medianDays={progression.closingTime.medianDays}
+              percentile75Days={progression.closingTime.percentile75Days}
+              stageRate={progression.closingRate}
+              rateLabel="Closing rate"
+              query={query}
+            />
+            <LossReasons title="Why deals fall through at negotiation" rows={progression.negotiationLost.reasons} />
+          </Card>
+        </div>
       </div>
     </section>
   );

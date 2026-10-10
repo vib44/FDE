@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { buildHref } from "../../../lib/navigation.ts";
 
 export default async function BranchPage({
   params,
@@ -13,6 +14,5 @@ export default async function BranchPage({
     if (typeof value === "string") query.set(key, value);
     else if (value) value.forEach((item) => query.append(key, item));
   }
-  query.set("branch", branchId);
-  redirect(`/branches?${query.toString()}#branch-${encodeURIComponent(branchId)}`);
+  redirect(buildHref(`/branches#branch-${encodeURIComponent(branchId)}`, query, { branch: branchId }));
 }

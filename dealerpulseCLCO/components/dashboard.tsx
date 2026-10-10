@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Check, CircleX, TriangleAlert } from "lucide-react";
 import { EMPTY_FILTERS } from "../lib/types.ts";
+import { buildHref } from "../lib/navigation.ts";
 import type { OverviewKPI, OverviewStatus } from "../lib/types.ts";
 import { toDay } from "../lib/dates.ts";
 import { periodLabel } from "../lib/period.ts";
@@ -79,7 +80,6 @@ export default function Dashboard() {
     from: dayStart(searchParams.get("from")),
     to: dayEnd(searchParams.get("to")),
     branch: searchParams.get("branch"),
-    rep: searchParams.get("rep"),
     source: searchParams.get("source"),
     model: searchParams.get("model"),
     timeBasis: searchParams.get("basis") === "event" ? "event" as const : "created" as const,
@@ -162,18 +162,11 @@ export default function Dashboard() {
   });
 
   function pageHref(path: string): string {
-    const query = searchParams.toString();
-    if (!query) return path;
-    const hashIndex = path.indexOf("#");
-    const base = hashIndex < 0 ? path : path.slice(0, hashIndex);
-    const hash = hashIndex < 0 ? "" : path.slice(hashIndex);
-    return `${base}${base.includes("?") ? "&" : "?"}${query}${hash}`;
+    return buildHref(path, searchParams.toString());
   }
 
   function branchHref(branchId: string): string {
-    const params = new URLSearchParams(searchParams.toString());
-    params.set("branch", branchId);
-    return `/targets?${params.toString()}`;
+    return buildHref("/targets", searchParams.toString(), { branch: branchId });
   }
 
   return (
@@ -240,7 +233,12 @@ export default function Dashboard() {
         rowHref={(row) => branchHref(row.branchId)}
         highlightRow={(row) => row.branchId === weakestWinRate?.branchId}
         emptyMessage="No branch results match the current filters."
-        emptyAction={{ label: "Reset filters", href: "/" }}
+        emptyAction={{
+          label: "Reset filters",
+          href: buildHref("/", searchParams.toString(), {
+            from: null, to: null, range: null, branch: null, source: null, model: null, basis: null,
+          }),
+        }}
         columns={[
           { label: "Rank", align: "right", render: (row) => formatNumber(row.rank) },
           { label: "Branch", render: (row) => row.branchName },
