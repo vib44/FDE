@@ -382,7 +382,24 @@ export function DeliverySection() {
         emptyMessage="No recorded delay reasons match these filters."
       />
 
-
+  <PremiumTable
+        title="Orders awaiting delivery"
+        takeaway="Sorted from longest to shortest wait."
+        rows={metrics.awaitingRows}
+        columns={[
+          { label: "Customer", render: (row) => row.lead.customerName },
+          { label: "Branch", render: (row) => row.lead.branchName },
+          { label: "Model", render: (row) => row.lead.model },
+          { label: "Representative", render: (row) => row.lead.repName },
+          { label: "Latest status", render: (row) => row.lead.status.replaceAll("_", " ") },
+          { label: "Days waiting", align: "right", render: (row) => formatNumber(row.daysWaiting) },
+          { label: "Order value", align: "right", render: (row) => formatCurrency(row.value) },
+        ]}
+        rowKey={(row) => row.lead.id}
+        rowHref={(row) => leadDetailsHref(query, [row.lead.id])}
+        highlightRow={(row) => row.daysWaiting >= 30}
+        emptyMessage="No orders are awaiting delivery in this selection."
+      />
       <PremiumTable
         title="Closed lost revenue"
         takeaway={`${formatNumber(metrics.closedLostCount)} lost deals are separated from open orders and delivery activity.`}
@@ -400,23 +417,7 @@ export function DeliverySection() {
         emptyMessage="No lost deals match the current filters."
       />
 
-      <PremiumTable
-        title="Orders awaiting delivery"
-        takeaway="Sorted from longest to shortest wait."
-        rows={metrics.awaitingRows}
-        columns={[
-          { label: "Customer", render: (row) => row.lead.customerName },
-          { label: "Branch", render: (row) => row.lead.branchName },
-          { label: "Model", render: (row) => row.lead.model },
-          { label: "Representative", render: (row) => row.lead.repName },
-          { label: "Days waiting", align: "right", render: (row) => formatNumber(row.daysWaiting) },
-          { label: "Order value", align: "right", render: (row) => formatCurrency(row.value) },
-        ]}
-        rowKey={(row) => row.lead.id}
-        rowHref={(row) => leadDetailsHref(query, [row.lead.id])}
-        highlightRow={(row) => row.daysWaiting >= 30}
-        emptyMessage="No orders are awaiting delivery in this selection."
-      />
+    
     </PageContainer>
   );
 }
