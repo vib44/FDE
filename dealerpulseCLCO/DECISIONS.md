@@ -8,18 +8,18 @@ Priority alerts and strategic insights are gathered at the bottom of the Overvie
 
 **Mandatory minimum —**
 
-**Overview dashboard:** business KPIs, status, and key insights on the Overview.
-**Drill-down:** users can move into branch, representative, team, and lead views.
-**Actionable insights:** the project surfaces follow-up risks, delivery backlog, and performance gaps.
-**Filtering/time range:** dashboard filters let users slice the data, and drill-down links carry the selected filters.
-**Responsive design**: layouts adapt for narrower screens, with touch-friendly controls and responsive tables/charts.
+- **Overview dashboard:** business KPIs, status, and key insights on the Overview.
+- **Drill-down:** users can move into branch, representative, team, and lead views.
+- **Actionable insights:** the project surfaces follow-up risks, delivery backlog, and performance gaps.
+- **Filtering/time range:** dashboard filters let users slice the data, and drill-down links carry the selected filters.
+- **Responsive design**: layouts adapt for narrower screens, with touch-friendly controls and responsive tables/charts.
 
 **Optional directions**
 
-**Lead aging and follow-up alerts** —  The project tracks cold pre-order leads, overdue leads, and orders awaiting delivery.
-**Conversion funnel** —  It includes lead-stage progression and conversion analysis.
-**Branch/rep comparisons** —  Branch and representative performance can be compared.
-
+- **Lead aging and follow-up alerts** —  The project tracks cold pre-order leads, overdue leads, and orders awaiting delivery.
+- **Conversion funnel** —  It includes lead-stage progression and conversion analysis.
+- **Branch/rep comparisons** —  Branch and representative performance can be compared.
+  
 ### Alert impact, effort and ranking
 
 Each alert's impact is the recoverable rupees =deal value X the chance to buy
