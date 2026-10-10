@@ -11,7 +11,7 @@ Tables and charts have branch , representative and leads drill down to Branch sp
 **Mandatory minimum —**
 
 - **Overview dashboard:** business KPIs, status, and key insights on the Overview.
-- **Drill-down:** users can move into branch, representative, team, and lead views.
+- **Drill-down:** users can move into branch, representative, team, and lead views from tables, charts and priority/insight cards.
 - **Actionable insights:** the project surfaces follow-up risks, delivery backlog, and performance gaps.
 - **Filtering/time range:** dashboard filters let users slice the data, and drill-down links carry the selected filters.
 - **Responsive design**: layouts adapt for narrower screens, with touch-friendly controls and responsive tables/charts.
