@@ -29,15 +29,15 @@ npm start
 
 ## Dashboard behavior
 
-- The dashboard offers date, branch, source, and time-basis filters for sections- Overview, Target & Revenue, Delivery,Funnel and Deals in Progress.
+- The dashboard offers date, branch, source, model and time-basis filters for sections- Overview, Target & Revenue, Delivery, Funnel , Leads Explorer and Deals in Progress.
 - Chart panels for visual display of metrics.
-- Overview Page: serves display of overall metrics, priority and insight cards, tables and priority action cards.
-- Funnel Page: Compares the branch level win rate and leads , providing a representative level leaderboard for drill down and few additional features like-
+- **Overview Page**: serves display of overall metrics, priority and insight cards, tables and priority action cards.
+- **Funnel Page**: Compares the branch level win rate and leads , providing a representative level leaderboard for drill down and few additional features like-
 - The “Find your biggest leads bucket” table groups leads by days since last_activity_at (1–3, 4–8, 9–12, 13–20, and over 20 days) and filters by lead’s latest statuses.
 - Funnel Page Chart -"Leads reaching each funnel stage" drill down to leads explorer page filtering the data according to the clicked chart bars.
--The leads explorer page shows leads records and information at granular leve;; its mobile layout stacks fields rather than requiring a horizontally scrolling table.
--Delivery Page- displays the delivery metrics across branches, the fastest deliveries, delay reasons , lost closed deals and orders awaiting deliveries.
--Deals in Progress Page- expands on the convert rate of leads once they reach the test drive and negotiation stage
+-**The leads explorer page** shows leads records and information at granular leve;; its mobile layout stacks fields rather than requiring a horizontally scrolling table.
+-**Delivery Page**: displays the delivery metrics across branches, the fastest deliveries, delay reasons , lost closed deals and orders awaiting deliveries.
+-**Deals in Progress Page**: expands on the convert rate of leads once they reach the test drive and negotiation stage
 -Route-level loading skeletons and error boundaries are provided for the dashboard and lead detail view.The table has clickable link cells drilling down to branch level , representative level and lead level information.
 -Dates and month aggregation use UTC. See DECISIONS.md for metric definitions, verified fixture patterns, limitations, and next steps.
 
