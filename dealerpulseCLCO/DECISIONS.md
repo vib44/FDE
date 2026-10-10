@@ -6,10 +6,12 @@ DealerPulse turns dealership lead, order, delivery, target, and leads source dat
 
 Priority alerts and strategic insights are gathered at the bottom of the Overview ("What to do first", Key insight, Watch, What's working), not on the section pages; per-page alerts are a next step scope. Tables are the primary comparison surface. Charts are limited to one permitted simple visualization on sections where shape adds value.
 
+Tables and charts have branch , representative and leads drill down to Branch specific breakdowns, representative information/leaderboard and leads explorer page respectively.
+
 **Mandatory minimum —**
 
 - **Overview dashboard:** business KPIs, status, and key insights on the Overview.
-- **Drill-down:** users can move into branch, representative, team, and lead views.
+- **Drill-down:** users can move into branch, representative, team, and lead views from tables, charts and priority/insight cards.
 - **Actionable insights:** the project surfaces follow-up risks, delivery backlog, and performance gaps.
 - **Filtering/time range:** dashboard filters let users slice the data, and drill-down links carry the selected filters.
 - **Responsive design**: layouts adapt for narrower screens, with touch-friendly controls and responsive tables/charts.
@@ -114,3 +116,4 @@ All figures above depend on this synthetic fixture, its timestamp normalization,
 2. **What-if analysis:** let managers change explicit assumptions (lead volume, response time, conversion rates, capacity, targets) and compare scenario outputs with the observed baseline. Label scenarios as estimates, expose assumptions and uncertainty, and do not write scenario values back into actual KPI data.
 3. **Live data:** connect to an authenticated, read-only CRM/dealer-system API or scheduled warehouse feed; document refresh latency, data ownership, timezone, deletion/correction semantics, and per-field lineage. Add freshness indicators and data-quality monitoring before calling it live.
 4. **Shared alert workflow:** persist alert IDs and statuses in a role-aware backend, retain the evidence/metric snapshot and model version that generated each task, support assignment and audit history, and provide a manager review step before integration with task systems.
+5. **Improvements:** A thorough testing to enhance the table filters and state preservation of filtered pages across the web application.
