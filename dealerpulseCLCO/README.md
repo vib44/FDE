@@ -10,7 +10,7 @@ DealerPulse is an executive dashboard for dealership leads, delivery, branch sal
 - **Filtering/time range:** dashboard filters let users slice the data, and drill-down links carry the selected filters.
 - **Responsive design**: layouts adapt for narrower screens, with touch-friendly controls and responsive tables/charts.
 
-**Optional directions**
+**Other directions**
 
 - **Lead aging and follow-up alerts** —  The project tracks cold pre-order leads, overdue leads, and orders awaiting delivery.
 - **Conversion funnel** —  It includes lead-stage progression and conversion analysis.
@@ -50,11 +50,12 @@ npm start
 - **Funnel Page**: Compares the branch level win rate and leads , providing a representative level leaderboard for drill down and few additional features like-
 - The “Find your biggest leads bucket” table groups leads by days since last_activity_at (1–3, 4–8, 9–12, 13–20, and over 20 days) and filters by lead’s latest statuses.
 - Funnel Page Chart -"Leads reaching each funnel stage" drill down to leads explorer page filtering the data according to the clicked chart bars.
--**The leads explorer page** shows leads records and information at granular leve;; its mobile layout stacks fields rather than requiring a horizontally scrolling table.
--**Delivery Page**: displays the delivery metrics across branches, the fastest deliveries, delay reasons , lost closed deals and orders awaiting deliveries.
--**Deals in Progress Page**: expands on the convert rate of leads once they reach the test drive and negotiation stage
--Route-level loading skeletons and error boundaries are provided for the dashboard and lead detail view.The table has clickable link cells drilling down to branch level , representative level and lead level information.
--Dates and month aggregation use UTC. See DECISIONS.md for metric definitions, verified fixture patterns, limitations, and next steps.
+- **The leads explorer page** shows leads records and information at granular leve;; its mobile layout stacks fields rather than requiring a horizontally scrolling table.
+- **Delivery Page**: displays the delivery metrics across branches, the fastest deliveries, delay reasons , lost closed deals and orders awaiting deliveries.
+- **Deals in Progress Page**: expands on the convert rate of leads once they reach the test drive and negotiation stage
+- Route-level loading skeletons and error boundaries are provided for the dashboard and lead detail view.The table has clickable link cells drilling down to branch level , representative level and lead level information.
+- Dates and month aggregation use UTC. See DECISIONS.md for metric definitions, verified fixture patterns, limitations, and next steps.
+- The project uses historical win probabilities & deterministic rules for priority alerts and action insights.
 
 ## Project map
 
