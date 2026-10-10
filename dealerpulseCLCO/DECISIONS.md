@@ -6,6 +6,8 @@ DealerPulse turns dealership lead, order, delivery, target, and leads source dat
 
 Priority alerts and strategic insights are gathered at the bottom of the Overview ("What to do first", Key insight, Watch, What's working), not on the section pages; per-page alerts are a next step scope. Tables are the primary comparison surface. Charts are limited to one permitted simple visualization on sections where shape adds value.
 
+Tables and charts have branch , representative and leads drill down to Branch specific breakdowns, representative information/leaderboard and leads explorer page respectively.
+
 **Mandatory minimum —**
 
 - **Overview dashboard:** business KPIs, status, and key insights on the Overview.
