@@ -14,7 +14,7 @@ Priority alerts and strategic insights are gathered at the bottom of the Overvie
 - **Filtering/time range:** dashboard filters let users slice the data, and drill-down links carry the selected filters.
 - **Responsive design**: layouts adapt for narrower screens, with touch-friendly controls and responsive tables/charts.
 
-**Optional directions**
+**Other directions**
 
 - **Lead aging and follow-up alerts** —  The project tracks cold pre-order leads, overdue leads, and orders awaiting delivery.
 - **Conversion funnel** —  It includes lead-stage progression and conversion analysis.
@@ -22,6 +22,7 @@ Priority alerts and strategic insights are gathered at the bottom of the Overvie
   
 ### Alert impact, effort and ranking
 
+The project uses historical win probabilities & deterministic rules for priority alerts and action insights.
 Each alert's impact is the recoverable rupees =deal value X the chance to buy
 This comes from the win rate of the deal's stage and source together (falling back to stage alone when the source has too little history); for a branch or rep rate gap, the extra conversions at the peer median times the win-rate gain from one step times the average delivered deal value. Effort (quick = days, medium = weeks, long = months) is an assumption per action type, set in `lib/config.ts`, not a measurement. One shared function ranks alerts by impact rounded to a configurable step (default ₹10 L), breaking ties by quicker effort and grouping equal impact and effort as "Equal priority"; each lead counts in at most one alert. Totals no single action can recover (lead-volume ceiling, target gap, branches with no unordered deals, leads lost before first contact) are strategic insights: they are shown but never ranked and carry no recoverable amount.
 
