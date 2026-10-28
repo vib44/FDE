@@ -56,7 +56,7 @@ function LeadConversionSlider({ baselineRatio, leadCount, averageDealValue, reve
   return (
     <PremiumTable
       className="forecast-scorecard"
-      title="Lead conversion forecast"
+      title="Lead conversion Forecast: New → Delivered"
       takeaway={`At a ${formatPercent(ratio)} lead conversion ratio (current ${formatPercent(baselineRatio)}), forecast revenue is ${formatCurrency(forecast.revenue)}.`}
       toolbar={(
         <div className="forecast-slider">
@@ -144,9 +144,9 @@ function StepConversionSlider({ title, fromLabel, toLabel, baseline }: {
 }
 
 const STEPS: { title: string; from: Stage; to: Stage; fromLabel: string; toLabel: string }[] = [
-  { title: "Contacted → Test drive forecast", from: "contacted", to: "test_drive", fromLabel: "Contacted", toLabel: "Test drive" },
-  { title: "Test drive → Negotiation forecast", from: "test_drive", to: "negotiation", fromLabel: "Test drive", toLabel: "Negotiation" },
-  { title: "Negotiation → Order placed forecast", from: "negotiation", to: "order_placed", fromLabel: "Negotiation", toLabel: "Order placed" },
+  { title: "Lead Conversion Forecast: Contacted → Test drive", from: "contacted", to: "test_drive", fromLabel: "Contacted", toLabel: "Test drive" },
+  { title: "Lead Conversion Forecast: Test drive → Negotiation", from: "test_drive", to: "negotiation", fromLabel: "Test drive", toLabel: "Negotiation" },
+  { title: "Lead Conversion Forecast: Negotiation → Order placed ", from: "negotiation", to: "order_placed", fromLabel: "Negotiation", toLabel: "Order placed" },
 ];
 
 export function ForecastingPage() {
