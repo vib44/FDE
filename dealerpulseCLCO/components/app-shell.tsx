@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   Search,
   Target,
+  TrendingUp,
   Truck,
 } from "lucide-react";
 import { buildHref } from "../lib/navigation.ts";
@@ -21,6 +22,7 @@ const navigation = [
   { label: "Funnel", href: "/funnel", icon: Filter },
   { label: "Delivery", href: "/delivery", icon: Truck },
   { label: "Deals in progress", href: "/deals", icon: Handshake },
+  { label: "Forecasting", href: "/forecasting", icon: TrendingUp },
 ] as const;
 
 const sectionNames = new Map<string, string>([
@@ -31,6 +33,7 @@ const sectionNames = new Map<string, string>([
   ["/delivery", "Delivery"],
   ["/deals", "Deals in progress"],
   ["/branches", "Deals in progress"],
+  ["/forecasting", "Forecasting"],
   ["/leads", "Lead Explorer"],
 ]);
 

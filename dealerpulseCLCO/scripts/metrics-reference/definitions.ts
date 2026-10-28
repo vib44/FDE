@@ -1,0 +1,27 @@
+import { INSIGHT_CONFIG, STAGES, THRESHOLDS } from "../../lib/config.ts";
+
+export const DEFINITION_HEADERS = ["Term", "Plain-language meaning", "Exact rule", "Used on pages"];
+
+const stageList = STAGES.map((stage) => stage.replaceAll("_", " ")).join(" → ");
+
+export const DEFINITIONS: string[][] = [
+  ["Stage order", "The journey every customer follows, from first enquiry to car delivered. A deal can also be lost.", `${stageList}. 'Lost' sits outside the order.`, "All pages"],
+  ["Reached a stage", "A lead counts as having reached a stage if it ever got there, even if it has since moved on or been lost.", "The lead's status history contains an event for that stage (first such event gives the date).", "Overview, Funnel, Deals in progress, Branch detail, Rep detail"],
+  ["Move-on rate (step conversion)", "Out of the customers who reached a step, the share who also reached the next one.", "Leads that reached the end stage ÷ leads that reached the start stage.", "Funnel, Deals in progress, Branch detail"],
+  ["Closed win rate", "Of the deals that are finished, how many ended in a delivery rather than a loss. Open deals are ignored.", "Delivered ÷ (delivered + lost).", "Overview, Funnel, Lead Explorer, Branch detail, Rep detail"],
+  ["Stage of loss", "Where in the journey a customer was when we lost them.", "The last non-lost status in the lead's history before it became lost.", "Funnel, Deals in progress, Overview insights"],
+  ["Unordered deal value", "Money still being chased: customers who have not yet placed an order.", "Sum of deal value for open leads in new, contacted, test drive or negotiation.", "Overview, Funnel, Deals in progress, Branch detail"],
+  ["Ordered deal value", "Money already sold but not yet delivered.", "Sum of deal value for leads at order placed with no delivery record.", "Overview, Funnel, Deals in progress, Delivery, Branch detail"],
+  ["Typical time (median)", "How long a step normally takes. Half of the deals are faster, half slower.", "Median of days between the two stage dates, using only leads where the end date is on or after the start date.", "Funnel, Deals in progress, Delivery, Overview insights"],
+  ["Overdue (75th percentile)", "A deal is overdue when it has waited longer than three out of four deals normally do at that step.", "Overdue threshold = the value at the 75th percentile of days for the step; an open deal is overdue when days in the current stage exceed it.", "Deals in progress, Funnel, Branch detail"],
+  ["Overdue against expected close date", "A different overdue test used in lists of open deals: the promised close date has passed.", "Open lead (before order, or order not delivered) whose expected close day is before the as-of day.", "Funnel, Deals in progress, Branch detail, Rep detail, Overview insights"],
+  ["Cold / idle lead", "A lead nobody has touched for too long.", `Before order: no activity for more than ${THRESHOLDS.coldLeadDays} days. Orders awaiting delivery: more than ${THRESHOLDS.staleOrderDays} days.`, "Funnel, Deals in progress, Overview insights"],
+  ["Chance to buy", "How likely an open customer is to end up buying, based on how similar customers ended.", `Delivered share of closed (delivered or lost) leads that reached the same stage. Uses the lead's source too when that source has at least ${THRESHOLDS.minClosedLeadsForSourceWinProbability} closed leads at the stage ('stage + source'); otherwise the stage only ('stage only').`, "Deals in progress, Lead Explorer, Overview insights, Alerts"],
+  ["Expected value", "The deal value we can realistically expect, weighting each open deal by its chance to buy.", "Deal value × chance to buy, for open leads only.", "Lead Explorer, Deals in progress, Alerts"],
+  ["UTC date bucketing", "Dates are grouped by calendar day and month in UTC (not local time), so a late-night deal counts for its UTC day.", "Day = first 10 characters of the ISO UTC timestamp; month = first 7 characters.", "All pages"],
+  ["Data as-of date", "The 'today' every age and overdue calculation uses: the newest timestamp in the data, not the computer clock.", "Largest timestamp found in the dataset (UTC).", "All pages"],
+  ["Immature cohorts", "Recent months whose leads have not had enough time to be delivered yet, so their results look unfairly low.", "A month is 'still maturing' when the time since the month ended is shorter than the typical (median) days from lead to delivery.", "Targets & Revenue"],
+  ["Small-sample rule", "We hide or flag rankings and rates built on too few records.", `Fewer than ${THRESHOLDS.minDeliveriesForBranchRank} deliveries: branch not ranked in delivery. Rates and outliers need at least ${THRESHOLDS.minLeadsForStageRate} leads. Good-news items need at least ${INSIGHT_CONFIG.minGoodNewsSample}. Source chance-to-buy needs ${THRESHOLDS.minClosedLeadsForSourceWinProbability} closed leads.`, "Overview, Funnel, Deals in progress, Delivery"],
+  ["Target attainment", "How much of the sales target has been achieved.", "Actual ÷ target. Three bases: delivered revenue ÷ target revenue; orders booked ÷ target units; booked revenue ÷ target revenue.", "Overview, Targets & Revenue"],
+  ["Recoverable impact", "The rupee value an alert could win back if acted on.", `Alert-specific formula (see Alerts & ranking). Rounded to ${INSIGHT_CONFIG.impactRoundingStep.toLocaleString("en-IN")} rupees only when ranking.`, "Overview"],
+];

@@ -19,6 +19,7 @@ export const PAGE_LOCAL_KEYS = {
   funnel: [],
   delivery: [],
   deals: [],
+  forecasting: [],
   leads: ["rep", "stage", "status", "leadIds", "leadSources", "sort", "order"],
 } as const satisfies Record<string, readonly string[]>;
 

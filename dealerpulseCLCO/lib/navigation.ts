@@ -56,6 +56,7 @@ export function pageKeyForPath(pathname: string): PageKey {
   if (pathname === "/funnel" || pathname === "/team" || pathname === "/representatives") return "funnel";
   if (pathname === "/delivery") return "delivery";
   if (pathname === "/deals" || pathname === "/branches" || pathname.startsWith("/branch/")) return "deals";
+  if (pathname === "/forecasting") return "forecasting";
   if (pathname === "/leads") return "leads";
   return "overview";
 }

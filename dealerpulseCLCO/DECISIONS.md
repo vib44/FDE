@@ -6,7 +6,7 @@ DealerPulse turns dealership lead, order, delivery, target, and leads source dat
 
 Priority alerts and strategic insights are gathered at the bottom of the Overview ("What to do first", Key insight, Watch, What's working), not on the section pages; per-page alerts are a next step scope. Tables are the primary comparison surface. Charts are limited to one permitted simple visualization on sections where shape adds value.
 
-Tables and charts have branch , representative and leads drill down to Branch specific breakdowns, representative information/leaderboard and leads explorer page respectively.
+Tables and charts have branch, representative and leads drill down to branch-specific breakdowns, the representative leaderboard (on Funnel) and the Leads explorer respectively. Legacy `/team`, `/representatives`, `/branches` and `/branch/:id` URLs redirect to Funnel or Deals in Progress with filters preserved.
 
 **Mandatory minimum —**
 
@@ -46,7 +46,7 @@ For example, if the median is 12 days, an order waiting 30 days can trigger high
 The cold-lead rule is another distinct threshold: a pre-order lead is cold only when it has had no activity for more than 14 days. Keeping the definitions separate prevents an order awaiting a vehicle from being treated as a neglected pre-order lead. 
 
 The ranked insights use historical win probabilities to estimate expected deal value. The probability is based on closed leads at the same stage, using source-specific data when there are enough examples and otherwise falling back to stage-level data. Statistical measures such as medians and outlier detection also help identify unusual performance.
-The dashboard’s High-priority alerts use deterministic rules and thresholds on branch aggregates—for example, whether stale leads or awaiting-delivery orders exist, and how close revenue is to target. They are ranked by severity and business impact, not by probability. 
+The Overview alerts (`lib/insights/alerts.ts`) use deterministic rules and thresholds on lead, order, representative, and branch data. They cover eight kinds: first contact, overdue leads, test-drive wait, stalled negotiation, idle orders, booking rate, closing rate, and test-drive-to-order rate. They are ranked by recoverable rupees and effort, not by a model prediction.
 
 ### Closed win rate
 
@@ -92,13 +92,13 @@ All figures above depend on this synthetic fixture, its timestamp normalization,
 - The interface uses a clear information hierarchy: headline KPIs first, then chart panels, then action-oriented insight and filtered lead detail.
 - Empty states, responsive layouts, and compact lead cards avoid blank or broken experiences when filters remove all data.
 - The layout is designed for desktop and tablet use with touch-friendly controls, stacked records on smaller screens, and no required horizontal scrolling.
-- The alert panel is intentionally focused and bounded so it adds decision support without cluttering the main executive story.
+- Alerts and insights are grouped at the bottom of the Overview so they support the executive story without cluttering the KPI and table sections.
 
 ### Technical quality
 - Business logic is separated from the UI into pure, testable metric functions that accept dataset and filters and return derived results.
 - Date handling is centralized and deliberately uses UTC-based bucket calculations to make the dashboard deterministic and consistent across browsers.
 - The data layer normalizes records once and reuses derived fields, which keeps the app easier to reason about and reduces duplication across views.
-- The app uses a lightweight static JSON source, route-local state via URL query parameters, and minimal server-side processing to match the assignment scope without speculative architecture.
+- The app uses a lightweight static JSON source bundled with the app at build time (no database), normalized by the server-rendered layout, with filter state in URL query parameters (carried across pages by `lib/navigation.ts`) and all metric computation in the browser, to match the assignment scope without speculative architecture.
 
 ### Insight and storytelling
 - The dashboard tells a business story rather than just dumping metrics: it highlights gaps, explains variance, and helps a non-technical decision-maker understand what is going wrong and which branch needs attention.
@@ -107,7 +107,8 @@ All figures above depend on this synthetic fixture, its timestamp normalization,
 
 ## Tradeoffs and limitations
 
-- Local JSON makes this dashboard reproducible and the metric layer deterministic, but it is not an operational data feed. 
+- Local JSON makes this dashboard reproducible and the metric layer deterministic, but it is not an operational data feed. The dataset is bundled into the app at build time and normalized by the root layout on each server render, then sent to the browser with the page; there is no polling or live refresh, and data changes need a rebuild and redeploy.
+- `/api/dataset` and `/api/ai-alerts` are present but not called by any page. `/api/ai-alerts` runs local rules (no AI provider) and its card component is not rendered, so alert done/discarded state is not currently stored anywhere.
 - The supplied fixture ends on 2025-12-31 and has only five branches and seven months of data. Small-sample subgroup comparisons, late-closing cohorts, and target quality require more representative live history.
 
 ## What I would build next
